@@ -50,9 +50,9 @@ async function pick(u){
   if(!m&&ms[0]){m=ms[0];id=m.agenda_id}
   if(!m){id=(await sb.rpc('create_agenda')).data;m={role:'admin'}}
   localStorage.setItem('ag',id);
-  const ag=(await sb.from('agendas').select('owner,invite_code').eq('id',id).single()).data;
+  const ag=(await sb.from('agendas').select('owner,invite_code,public_code').eq('id',id).single()).data;
   S={agenda:id,user:u,owner:ag.owner===u.id,role:m.role};
-  window.AGENDA_LINK=location.origin+location.pathname+'?join='+ag.invite_code}
+  window.AGENDA_LINK=location.origin+location.pathname+'?join='+ag.invite_code;window.AGENDA_OWNER=S.owner;window.PUBLIC_LINK=location.origin+location.pathname.replace(/[^/]*$/,'')+'reservar.html?c='+ag.public_code}
 
 async function init(){
   const u=await login();await pick(u);
@@ -63,6 +63,7 @@ async function init(){
 
 window.claude={use:async n=>{ready=ready||init();await ready;return n==='user'?user:n==='db'?db:null}};
 window.logout=()=>sb.auth.signOut().then(()=>{localStorage.removeItem('ag');location.reload()});
+window.deleteAccount=async()=>{try{if(S.owner){const l=(await sb.storage.from('notas').list(S.agenda,{limit:1000})).data||[];if(l.length)await sb.storage.from('notas').remove(l.map(x=>S.agenda+'/'+x.name))}const r=await sb.rpc('delete_my_account');if(r.error){alert('No se pudo eliminar: '+r.error.message);return}await sb.auth.signOut()}catch(e){console.error(e)}localStorage.clear();location.reload()};
 window.uploadFile=async f=>{const path=S.agenda+'/'+Date.now()+'-'+f.name.replace(/[^\w.\-]/g,'_');const r=await sb.storage.from('notas').upload(path,f);return r.error?null:{name:f.name,path}};
 window.openFile=async p=>{const r=await sb.storage.from('notas').createSignedUrl(p,3600);if(r.data){const w=window.open(r.data.signedUrl,'_blank');if(!w)location.href=r.data.signedUrl}};
 })();

@@ -283,11 +283,15 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
 
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="shim.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let openId=null;
+const colorOf=id=>id==='otro'?'#9AA0A6':mcol(id);
+const lget=id=>{try{return localStorage.getItem('nt:'+id)||''}catch(e){return ''}};
+const lset=(id,v)=>{try{v?localStorage.setItem('nt:'+id,v):localStorage.removeItem('nt:'+id)}catch(e){}};
 const hh0=on=>({on,desde:'09:00',hasta:'20:00'});
 let cfg={horas:[hh0(false),hh0(true),hh0(true),hh0(true),hh0(true),hh0(true),hh0(true)],blocks:[]};
 const blocked=k=>cfg.blocks.some(b=>!b.hd&&k>=b.desde&&k<=b.hasta);
@@ -308,7 +312,7 @@ const DIA=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
 const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
 let vy=today.getFullYear(), vm=today.getMonth(), sel=key(today), multi=false, pend=[], uid=1, py=vy;
 const mk=(o,h,nom,ape)=>{const d=new Date(today);d.setDate(d.getDate()+o);return{id:String(uid++),fecha:key(d),hora:h,nombre:nom,apellido:ape}};
-let turnos=[mk(0,'10:00','Gustavo','Pérez'),mk(0,'12:00','Laura','Gómez'),mk(0,'17:00','Marta','Díaz'),
+let turnos=window.SUPABASE_URL?[]:[mk(0,'10:00','Gustavo','Pérez'),mk(0,'12:00','Laura','Gómez'),mk(0,'17:00','Marta','Díaz'),
 mk(1,'11:00','Pablo','Ruiz'),mk(2,'15:00','Ana','López'),mk(2,'17:00','Sofía','Rey'),mk(5,'09:00','Julián','Vega')];
 const mins=h=>{const[a,b]=h.split(':');return +a*60+ +b};
 const fmt=k=>{const[y,m,d]=k.split('-');return new Date(y,m-1,d)};
@@ -326,7 +330,7 @@ function render(){
   $('grid').innerHTML=h;
   $('dia').textContent=fmt(sel).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   const l=turnos.filter(t=>t.fecha===sel).sort((a,b)=>mins(a.hora)-mins(b.hora));
-  $('lista').innerHTML=l.length?l.map(t=>{const has=t.notes||(t.files||[]).length;return `<div class="t${openId===t.id?' open':''}" data-id="${t.id}"><b style="border-left-color:${mcol(t.by)}">${t.hora}</b><span>${esc(t.nombre+' '+t.apellido)}</span><button class="nb${has?'':' empty0'}" data-a="n">${has?'Ver notas':'Agregar notas'}</button>${openId===t.id&&canW?'<div class="ac"><button data-a="e">Editar</button><button class="del" data-a="d">Borrar</button></div>':''}</div>`}).join(''):'<div class="empty">Sin turnos este día</div>';
+  $('lista').innerHTML=l.length?l.map(t=>{const has=!!lget(t.id)||(t.files||[]).length;return `<div class="t${openId===t.id?' open':''}" data-id="${t.id}"><b style="border-left-color:${colorOf(t.by)}">${t.hora}</b><span>${esc(t.nombre+' '+t.apellido)}${t.estado==='pendiente'?' <small style="color:var(--y)">· pendiente</small>':''}</span><button class="nb${has?'':' empty0'}" data-a="n">${has?'Ver notas':'Agregar notas'}</button>${openId===t.id&&canW?'<div class="ac">'+(t.estado==='pendiente'?'<button data-a="ok">Aprobar</button>':'')+'<button data-a="e">Editar</button><button class="del" data-a="d">Borrar</button></div>':''}</div>`}).join(''):'<div class="empty">Sin turnos este día</div>';
 }
 function go(dir){vm+=dir;if(vm<0){vm=11;vy--}if(vm>11){vm=0;vy++}render();
   $('grid').animate([{transform:`translateX(${dir*40}px)`,opacity:.3},{transform:'none',opacity:1}],{duration:180})}
@@ -452,7 +456,7 @@ $('cfy').onclick=()=>{$('cf').classList.remove('on');const f=yesFn;yesFn=null;if
 $('lista').onclick=e=>{
   const c=e.target.closest('.t');if(!c)return;const id=c.dataset.id,a=e.target.closest('[data-a]');
   if(a){
-    if(a.dataset.a==='n')openNotes(id);
+    if(a.dataset.a==='ok'){const t=turnos.find(x=>x.id===id);t.estado='confirmado';saveT(t);render()}else if(a.dataset.a==='n')openNotes(id);
     else if(a.dataset.a==='e')openEdit(id);
     else{const t=turnos.find(x=>x.id===id);ask('¿Borrar el turno de '+t.nombre+' '+t.apellido+'?',()=>{delT(id);openId=null;render()},'Borrar')}
     return}
@@ -473,8 +477,8 @@ $('esave').onclick=()=>{
 let nid=null;
 let ntar=null;const cur=()=>ntar;
 function drawFiles(){$('nf').innerHTML=(cur().files||[]).map((f,i)=>`<div class="fl"><a href="#" data-p="${esc(f.path||'')}">📎 ${esc(f.name)}</a><button data-i="${i}" aria-label="Quitar">×</button></div>`).join('')}
-function openNotes(id){nid=id;ntar=turnos.find(x=>x.id===id);const t=cur();$('ntt').textContent='Notas · '+t.nombre+' '+t.apellido+' · '+t.hora;$('nta').value=t.notes||'';$('nhint').textContent='';drawFiles();$('nt').classList.add('on')}
-function closeNotes(){if(nrec&&nlive)try{nrec.stop()}catch(e){}const g=cur();g.notes=$('nta').value.trim();if(g.gen){g.ts=Date.now();if(!g.notes&&!(g.files||[]).length)delG(g);else saveG(g)}else saveT(g);$('nt').classList.remove('on');render();renderN()}
+function openNotes(id){nid=id;ntar=turnos.find(x=>x.id===id);const t=cur();$('ntt').textContent='Notas · '+t.nombre+' '+t.apellido+' · '+t.hora;$('nta').value=lget(t.id);$('nhint').textContent='Solo en este dispositivo: no se sincroniza.';drawFiles();$('nt').classList.add('on')}
+function closeNotes(){if(nrec&&nlive)try{nrec.stop()}catch(e){}const g=cur(),v=$('nta').value.trim();if(g.gen){g.notes=v;g.ts=Date.now();if(!g.notes&&!(g.files||[]).length)delG(g);else saveG(g)}else lset(g.id,v);$('nt').classList.remove('on');render();renderN()}
 $('ndone').onclick=closeNotes;
 $('nt').onclick=e=>{if(e.target===$('nt'))closeNotes()};
 $('nat').onclick=()=>$('nfi').click();
@@ -490,9 +494,9 @@ $('ndic').onclick=()=>{
     ngot=false;nrec.start();nlive=true;$('ndic').classList.add('on');$('ndic').textContent='⏹ Escuchando…';$('nhint').textContent=''}
   catch(e){nkb()}
 };
-$('nfi').onchange=async e=>{const t=cur();t.files=t.files||[];if(!window.uploadFile){$('nhint').textContent='Los archivos necesitan la agenda en línea.';return}$('nhint').textContent='Subiendo…';for(const f of [...e.target.files]){const x=await window.uploadFile(f);if(x)t.files.push(x)}e.target.value='';$('nhint').textContent='';drawFiles();(t.gen?saveG:saveT)(t)};
+$('nfi').onchange=async e=>{const t=cur();if(!t.gen){$('nhint').textContent='Los archivos van en las Notas generales: las notas de sesión no se sincronizan.';e.target.value='';return}t.files=t.files||[];if(!window.uploadFile){$('nhint').textContent='Los archivos necesitan la agenda en línea.';return}$('nhint').textContent='Subiendo…';for(const f of [...e.target.files]){const x=await window.uploadFile(f);if(x)t.files.push(x)}e.target.value='';$('nhint').textContent='';drawFiles();(t.gen?saveG:saveT)(t)};
 $('nf').onclick=e=>{const a=e.target.closest('a[data-p]');if(a){e.preventDefault();if(window.openFile)window.openFile(a.dataset.p);return}const b=e.target.closest('button');if(!b)return;const t=cur();t.files.splice(+b.dataset.i,1);drawFiles();(t.gen?saveG:saveT)(t)};
-turnos[0].notes='Primera consulta: dolor de espalda.';
+
 
 /* ---------- Pestañas ---------- */
 function tab(n){
@@ -503,7 +507,7 @@ function tab(n){
 $('nav').onclick=e=>{const b=e.target.closest('button');if(b)tab(b.dataset.t)};
 
 /* ---------- Anotador general ---------- */
-let gnotes=[{id:'g1',gen:1,notes:'Ideas para la agenda\nRecordar renovar el alquiler del consultorio.',files:[],ts:Date.now()}];
+let gnotes=window.SUPABASE_URL?[]:[{id:'g1',gen:1,notes:'Ideas para la agenda\nRecordar renovar el alquiler del consultorio.',files:[],ts:Date.now()}];
 function renderN(){
   $('nlist').innerHTML=gnotes.length?gnotes.slice().sort((a,b)=>b.ts-a.ts).map(g=>{const l=(g.notes||'').split('\n');
     return `<div class="t" data-g="${g.id}"><div style="flex:1;min-width:0"><span class="gt">${esc(l[0]||'Sin texto')}</span><div class="mut">${esc(l.slice(1).join(' ').slice(0,80))}${(g.files||[]).length?' 📎'+g.files.length:''}</div></div><button class="nb empty0" data-x="${g.id}" aria-label="Borrar">🗑</button></div>`}).join(''):'<div class="empty">Todavía no hay notas</div>'}
@@ -551,7 +555,7 @@ function aShow(s){
   let h='',tot=0;
   days.forEach(d=>{const k=key(d),l=turnos.filter(t=>t.fecha===k).sort((a,b)=>mins(a.hora)-mins(b.hora));tot+=l.length;
     if(days.length>1&&!l.length)return;
-    h+=`<div class="mut" style="margin:10px 0 4px;text-transform:capitalize">${d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})}</div>`+(l.length?l.map(t=>`<div class="t" style="cursor:default"><b>${t.hora}</b><span>${esc(t.nombre+' '+t.apellido)}</span></div>`).join(''):'<div class="empty">Sin sesiones</div>')});
+    h+=`<div class="mut" style="margin:10px 0 4px;text-transform:capitalize">${d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})}</div>`+(l.length?l.map(t=>`<div class="t" style="cursor:default"><b style="border-left-color:${colorOf(t.by)}">${t.hora}</b><span>${esc(t.nombre+' '+t.apellido)}</span></div>`).join(''):'<div class="empty">Sin sesiones</div>')});
   say((tot?'Tenés '+tot+(tot>1?' sesiones:':' sesión:'):'No tenés sesiones en ese período.')+h+(days.length===1?`<button class="slot" data-v="${key(days[0])}">Ver en el calendario</button>`:''))}
 function aFreeOld(s){
   let min=0,max=1440,m;
@@ -726,5 +730,6 @@ $('go').textContent='Listo';$('txt').placeholder='Ej: Gustavo Pérez mañana a l
 let tm;$('txt').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(()=>{const v=$('txt').value.trim();const p=parse(v);if(p.nombre&&p.apellido&&p.fecha&&p.hora){review(v);$('txt').value=''}},1800)});
 render();
 </script>
+<script src="extra.js"></script>
 </body>
 </html>
