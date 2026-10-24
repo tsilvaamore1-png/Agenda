@@ -13,11 +13,11 @@ const LW='style="width:auto"',LK='style="width:100%;background:var(--card);borde
 addScreen('R',`<div class="rv"><div class="r"><label ${LW}>Activar link de reservas</label><button class="sw" id="bkOn" aria-label="Activar"></button></div><div class="r"><label ${LW}>Aprobar cada reserva a mano</label><button class="sw" id="bkMan" aria-label="Aprobaci\u00f3n manual"></button></div><div class="r"><label ${LW}>M\u00e1x. turnos por persona</label><input type="number" id="bkMax" min="1" max="20" inputmode="numeric" style="max-width:70px"></div></div><div class="heard" style="white-space:normal;margin:8px 0 12px">Quien abre el link no inicia sesi\u00f3n: solo ve d\u00edas y horarios libres y puede reservar. No ve nombres ni datos de nadie.</div><input type="text" id="bkLink" readonly ${LK}><button class="newn" id="bkCopy" style="background:var(--y);color:var(--yfg);border:0">Copiar link</button><h2>Pendientes de aprobar</h2><div id="bkPend"></div>`);
 addScreen('F','<div id="fBody"></div>');
 addScreen('Hi','<div id="hiBody"></div>');
-addScreen('IO',`<h2>Exportar</h2><button class="menub" id="exX">Excel (.xlsx)<span>\u2193</span></button><button class="menub" id="exI">Calendario (.ics)<span>\u2193</span></button><button class="menub" id="exJ">Copia de la agenda (.json)<span>\u2193</span></button><h2>Importar</h2><button class="menub" id="imB">Elegir archivo<span>\u2191</span></button><input type="file" id="imF" accept=".xlsx,.xls,.csv,.ics,.json" hidden><div class="heard" id="imM" style="white-space:normal;margin-top:8px">Excel o CSV con columnas Nombre, Apellido, Fecha y Hora; archivo .ics de Google Calendar u otro calendario; o una copia .json de esta app.</div>`);
+addScreen('IO',`<h2>Exportar</h2><button class="menub" id="exX">Excel (.xlsx)<span>\u2193</span></button><button class="menub" id="exI">Calendario (.ics)<span>\u2193</span></button><button class="menub" id="exJ">Copia de la agenda (.json)<span>\u2193</span></button><h2>Importar</h2><button class="menub" id="imB">Elegir archivo<span>\u2191</span></button><input type="file" id="imF" accept=".xlsx,.xls,.csv,.ics,.json" hidden><div class="heard" id="imM" style="white-space:normal;margin-top:8px">Excel o CSV con columnas Nombre, Apellido, Fecha, Hora y Primera sesi\u00f3n (S\u00ed o vac\u00edo); archivo .ics de Google Calendar u otro calendario; o una copia .json de esta app.</div>`);
 addScreen('C','<button class="menub" id="cOut">Cerrar sesi\u00f3n<span>\u203a</span></button><button class="menub" id="cDel" style="color:#ff6b6b">Eliminar mi cuenta<span>\u203a</span></button>');
 
 /* historial */
-const logH=t=>{if(db&&me)db.doc('hist/'+gid()).set({ts:Date.now(),by:me.id,text:t})};
+const logH=t=>{try{if(db&&me)Promise.resolve(db.doc('hist/'+gid()).set({ts:Date.now(),by:me.id,text:t})).catch(console.error)}catch(err){console.error(err)}};
 const _sT=saveT,_dT=delT;
 window.saveT=t=>{const nw=!turnos.includes(t);_sT(t);logH((nw?'Agend\u00f3':'Modific\u00f3')+' turno de '+t.nombre+' '+t.apellido+' ('+lab(t)+')')};
 window.delT=id=>{const t=turnos.find(x=>x.id===id);_dT(id);if(t)logH('Borr\u00f3 turno de '+t.nombre+' '+t.apellido+' ('+lab(t)+')')};
@@ -77,7 +77,7 @@ const parseRows=rs=>rs.map(r=>{const o={};Object.keys(r).forEach(k=>o[nz(k).repl
   let n=o.nombre||o.nombres||'',a=o.apellido||o.apellidos||'';const full=o.consultante||o.paciente||o.cliente||o.nombreyapellido||o.titulo||o.resumen||o.evento||o.asunto||o.summary||'';
   if(!n&&full){const t=toT(String(full),new Date());n=t.nombre;a=t.apellido}
   const fv=o.fecha||o.dia||o.inicio||o.start||o.date||'';let h=toHM(o.hora||o.horario||o.time||'');if(!h&&typeof fv==='number'&&fv%1)h=toHM(fv%1);
-  return{nombre:String(n).trim(),apellido:String(a).trim(),fecha:toKey(fv),hora:h}});
+  const ps=String(o.primerasesion||o.primera||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');return{nombre:String(n).trim(),apellido:String(a).trim(),fecha:toKey(fv),hora:h,primera:/^(s|si|x|1|true|yes|y)$/.test(ps)}});
 $('imB').onclick=()=>$('imF').click();
 $('imF').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;let list=[];const ext=f.name.split('.').pop().toLowerCase();
   try{
@@ -98,8 +98,8 @@ $('cOut').onclick=()=>window.logout&&window.logout();
 $('cDel').onclick=()=>ask(window.AGENDA_OWNER?'Sos el due\u00f1o: se borra tu cuenta Y la agenda completa para todos los miembros. No se puede deshacer.':'Se borra tu cuenta. La agenda sigue para los dem\u00e1s. No se puede deshacer.',()=>ask('\u00daltima confirmaci\u00f3n: \u00bfeliminar definitivamente?',()=>window.deleteAccount&&window.deleteAccount(),'S\u00ed, eliminar'),'Continuar');
 
 /* suscripciones cuando hay conexi\u00f3n */
-let tries=0;const w=setInterval(()=>{if(++tries>100)clearInterval(w);if(typeof db!=='undefined'&&db){clearInterval(w);
-  db.doc('booking/main').onSnapshot(s=>{if(s.exists)bk={...bk,...s.data()};renderR()});
-  db.collection('hist').onSnapshot(s=>{hist=s.docs.map(d=>d.data()).sort((a,b)=>b.ts-a.ts).slice(0,150);renderHi()});
-  db.collection('fichas').onSnapshot(s=>{fich={};s.docs.forEach(d=>fich[d.id]=d.data());if($('sF').style.display!=='none')renderF()})}},300);
+(async()=>{try{const d=await claude.use('db');if(!d)return;
+  d.doc('booking/main').onSnapshot(s=>{if(s.exists)bk={...bk,...s.data()};renderR()});
+  d.collection('hist').onSnapshot(s=>{hist=s.docs.map(x=>x.data()).sort((a,b)=>b.ts-a.ts).slice(0,150);renderHi()});
+  d.collection('fichas').onSnapshot(s=>{fich={};s.docs.forEach(x=>fich[x.id]=x.data());if($('sF').style.display!=='none')renderF()})}catch(err){console.error(err)}})();
 })();

@@ -664,11 +664,11 @@ $('goH').onclick=()=>sub('H');$('goP').onclick=()=>sub('P');$('sback').onclick=(
         $('wlt').textContent='Te has unido a la agenda de '+(on||'su dueño');$('wl').classList.add('on')}}else if(!old.name)await db.doc('members/'+me.id).update({name:nmv});
     db.collection('turnos').onSnapshot(s=>{turnos=s.docs.map(x=>({...x.data(),files:x.data().files||[]}));render()});
     db.collection('gnotes').onSnapshot(s=>{gnotes=s.docs.map(x=>({...x.data(),files:x.data().files||[]}));renderN()});
-    db.doc('config/main').onSnapshot(s=>{if(s.exists){const c=JSON.parse(JSON.stringify(s.data()));cfg.horas=c.horas||cfg.horas;cfg.blocks=c.blocks||[];renderS();render()}});
+    db.doc('config/main').onSnapshot(s=>{if(s.exists){const c=JSON.parse(JSON.stringify(s.data()));cfg.horas=c.horas||cfg.horas;cfg.blocks=c.blocks||[];renderS();render()}else if(canW)saveCfg()});
     db.collection('members').onSnapshot(async s=>{
       members=s.docs.map(x=>({...x.data(),id:x.id}));
       const mine=members.find(x=>x.id===me.id);canW=!(mine&&(mine.role==='viewer'||mine.removed));isAdm=owner||canEd||!!(mine&&mine.role!=='viewer'&&!mine.removed);
-      $('bar').style.display=canW?'':'none';
+      $('bar').style.display=(canW&&$('app').style.display!=='none')?'':'none';
       const p=await user.profiles(members.map(x=>x.id));members.forEach(x=>{mname[x.id]=x.name||(p[x.id]&&p[x.id].name)||''});
       legend();renderM();render()});
   }catch(e){db=null}
