@@ -1,7 +1,7 @@
 // extra.js: reservas por link, historial, fichas, importar/exportar y cuenta
 (()=>{
 const z=n=>String(n).padStart(2,'0');
-let bk={enabled:false,manual:false,max:2},hist=[],fich={},fsel=null;
+let bk={enabled:false,manual:false,max:2},hist=[],fich={},fsel=null,fq='';
 const TT={H:'Horarios',P:'Permisos',R:'Reservas por link',F:'Fichas',Hi:'Historial',IO:'Importar y exportar',C:'Cuenta'};
 const SHOW={H:()=>renderS(),P:()=>renderM(),R:()=>renderR(),F:()=>renderF(),Hi:()=>renderHi()};
 window.sub=n=>{$('sMenu').style.display=n==='m'?'':'none';Object.keys(TT).forEach(k=>$('s'+k).style.display=n===k?'':'none');
@@ -48,10 +48,14 @@ window.renderF=()=>{
   const m={};turnos.forEach(t=>{const k=fk(t);(m[k]=m[k]||{k,nombre:t.nombre,apellido:t.apellido,ts:[]}).ts.push(t)});
   const ps=Object.values(m).sort((a,b)=>(a.apellido+a.nombre).localeCompare(b.apellido+b.nombre));
   const p=fsel&&ps.find(x=>x.k===fsel);if(!p)fsel=null;
-  if(!p){$('fBody').innerHTML=ps.length?ps.map(p=>`<div class="t" data-f="${p.k}"><div style="flex:1;min-width:0"><span class="gt">${esc(p.nombre+' '+p.apellido)}</span><div class="mut">${p.ts.length} ${p.ts.length>1?'sesiones':'sesi\u00f3n'}</div></div><span style="color:var(--mute)">\u203a</span></div>`).join(''):'<div class="empty">Todav\u00eda no hay consultantes</div>';return}
+  if(!p){
+    if(!$('fQ'))$('fBody').innerHTML='<input type="search" id="fQ" placeholder="Buscar por nombre" autocomplete="off" value="'+esc(fq)+'" style="width:100%;background:var(--card);border:1px solid transparent;border-radius:12px;padding:13px;margin-bottom:10px;color:var(--fg);font:inherit;outline:none"><div id="fList"></div>';
+    const q=nz(fq).split(/\s+/).filter(Boolean),vis=ps.filter(p=>{const n=nz(p.nombre+' '+p.apellido);return q.every(x=>n.includes(x))});
+    $('fList').innerHTML=vis.length?vis.map(p=>`<div class="t" data-f="${p.k}"><div style="flex:1;min-width:0"><span class="gt">${esc(p.nombre+' '+p.apellido)}</span><div class="mut">${p.ts.length} ${p.ts.length>1?'sesiones':'sesi\u00f3n'}</div></div><span style="color:var(--mute)">\u203a</span></div>`).join(''):'<div class="empty">'+(ps.length?'Sin resultados':'Todav\u00eda no hay consultantes')+'</div>';return}
   const f=fich[fsel]||{},ts=p.ts.slice().sort((a,b)=>(b.fecha+b.hora<a.fecha+a.hora)?-1:1),tel=f.tel||(ts.find(t=>t.tel)||{}).tel||'',first=p.ts.map(t=>t.fecha).sort()[0],d=new Date(),n=key(d)+' '+z(d.getHours())+':'+z(d.getMinutes());
   $('fBody').innerHTML=`<button class="hoy" id="fBack">\u2039 Todas las fichas</button><h2 style="color:var(--fg);font-size:22px;margin:14px 0 8px;text-transform:none">${esc(p.nombre+' '+p.apellido)}</h2><div class="rv"><div class="r"><label>Tel\u00e9fono</label><input type="text" id="fTel" inputmode="tel" value="${esc(tel)}" placeholder="Agregar"></div><div class="r"><label ${LW}>Primera sesi\u00f3n</label><span>${fS(first)}</span></div><div class="r"><label>Frecuencia</label><span>${freq(p.ts)}</span></div></div><h2>Historial de sesiones</h2>`+ts.map(t=>{const st=t.estado==='pendiente'?'Por aprobar':(t.fecha+' '+t.hora<n?'Realizada':'Pendiente');return `<div class="t" style="cursor:default"><b style="border-left-color:${colorOf(t.by)}">${t.hora}</b><span>${fS(t.fecha)}</span><small class="mut" style="margin-left:auto">${st}</small></div>`}).join('')};
 $('fBody').onclick=e=>{const c=e.target.closest('[data-f]');if(c){fsel=c.dataset.f;renderF()}if(e.target.id==='fBack'){fsel=null;renderF()}};
+$('fBody').oninput=e=>{if(e.target.id==='fQ'){fq=e.target.value;renderF()}};
 $('fBody').onchange=e=>{if(e.target.id==='fTel'&&db&&fsel)db.doc('fichas/'+fsel).update({tel:e.target.value.trim()})};
 
 /* exportar */
@@ -66,7 +70,7 @@ $('exI').onclick=()=>{const st=new Date().toISOString().replace(/[-:]|\.\d{3}/g,
 $('exJ').onclick=()=>dl('agenda.json',new Blob([JSON.stringify({turnos:sorted(),config:cfg},null,1)],{type:'application/json'}));
 
 /* importar */
-const toT=(name,d)=>{const w=name.replace(/^(sesi\u00f3n|sesion|turno|cita)\s*[:\-\u2013]?\s*(con|de)?\s*/i,'').trim().split(/\s+/).filter(Boolean);return{nombre:w[0]||'Sin nombre',apellido:w.slice(1).join(' '),fecha:key(d),hora:z(d.getHours())+':'+z(d.getMinutes())}};
+const toT=(name,d)=>{const w=name.replace(/^(sesi\u00f3n|sesion|turno|cita)\s*[:\-\u2013]?\s*(con|de)?\s*/i,'').trim().split(/\s+/).filter(Boolean);const sp=splitName(w);return{nombre:sp[0]||'Sin nombre',apellido:sp[1],fecha:key(d),hora:z(d.getHours())+':'+z(d.getMinutes())}};
 function parseICS(txt){const L=txt.replace(/\r?\n[ \t]/g,'').split(/\r?\n/),out=[];let ev=null;
   L.forEach(l=>{if(l==='BEGIN:VEVENT')ev={};else if(l==='END:VEVENT'){if(ev&&ev.s)out.push(ev);ev=null}else if(ev){const i=l.indexOf(':'),k=l.slice(0,i).split(';')[0],v=l.slice(i+1);if(k==='DTSTART')ev.s=v;if(k==='SUMMARY')ev.n=v.replace(/\\,/g,',')}});
   return out.map(e=>{const m=e.s.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2}))?(Z)?/);if(!m)return null;

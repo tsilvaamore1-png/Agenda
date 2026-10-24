@@ -352,6 +352,13 @@ document.addEventListener('click',e=>{if(!e.target.closest('#pk'))$('pk').classL
 
 /* ---------- Interpretar lo dictado ---------- */
 const nz=s=>s.toLowerCase().replace(/[áä]/g,'a').replace(/[éë]/g,'e').replace(/[íï]/g,'i').replace(/[óö]/g,'o').replace(/[úü]/g,'u').replace(/ñ/g,'n').replace(/,/g,' ');
+const GN=new Set(('maria jose juan ana luis carlos miguel pedro jorge laura luz paz belen eugenia lucia carolina cecilia victoria agustina sofia valentina martina florencia candela milagros rocio soledad veronica graciela alejandra andrea claudia silvia monica susana patricia beatriz teresa rosa elena emilia ines julia clara marta cristina gabriela daniela natalia romina paula noelia micaela camila celeste fernanda guadalupe lourdes mercedes ramona antonio manuel francisco angel alberto alejandro eduardo ricardo roberto daniel diego fernando gustavo hector horacio ignacio javier leonardo marcelo mario martin matias nicolas oscar pablo rafael ramon raul ruben santiago sebastian sergio tomas victor walter hugo omar cesar enrique emilio adrian esteban facundo federico gonzalo guillermo lucas mauricio rodolfo augusto ariel dario ezequiel franco gaston julian leandro maximiliano nahuel agustin bautista benjamin thiago lautaro joaquin ramiro emanuel').split(' '));
+function splitName(w){
+  w=w.filter(Boolean);if(w.length<2)return[w.join(' '),''];
+  const full=nz(w.join(' ')).replace(/\s+/g,' ').trim();
+  for(const t of turnos){if(nz((t.nombre+' '+t.apellido).trim()).replace(/\s+/g,' ')===full)return[t.nombre,t.apellido]}
+  let k=1;if(w.length===3)k=GN.has(nz(w[1]))?2:1;else if(w.length>=4)k=2;
+  return[w.slice(0,k).join(' '),w.slice(k).join(' ')]}
 function parse(raw){
   const s=nz(raw);let cut=s.length,date=null,hh=null,mm=0,first=/primera/.test(s);
   const hit=(m)=>{if(m&&m.index<cut)cut=m.index};
@@ -379,7 +386,8 @@ function parse(raw){
   hit(s.match(/primera/));
   const stop=['para','el','la','de','con','turno','sesion','agendar','agendame','agenda','anota','anotame','nuevo','a','un','una','agregar','pone','poneme'];
   const w=raw.slice(0,cut).split(/\s+/).filter(x=>x&&!stop.includes(nz(x).trim()));
-  return{nombre:w[0]?cap(w[0].toLowerCase()):'',apellido:w.slice(1).map(x=>cap(x.toLowerCase())).join(' '),
+  const sp=splitName(w),cp=x=>x.split(/\s+/).filter(Boolean).map(y=>cap(y.toLowerCase())).join(' ');
+  return{nombre:cp(sp[0]),apellido:cp(sp[1]),
     fecha:date?key(date):'',hora:hh!==null?String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0'):'',primera:first,rec:repeat,sem:sem};
 }
 

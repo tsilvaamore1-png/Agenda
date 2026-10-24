@@ -25,6 +25,7 @@ input{width:100%;background:var(--card);border:1px solid transparent;border-radi
 const $=i=>document.getElementById(i),C=new URLSearchParams(location.search).get('c'),z=n=>String(n).padStart(2,'0');
 const MES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const sb=window.SUPABASE_URL?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+const DEV=(()=>{try{let d=localStorage.getItem('dev');if(!d){d=(crypto.randomUUID?crypto.randomUUID():String(Math.random()).slice(2)+Date.now());localStorage.setItem('dev',d)}return d}catch(e){return ''}})();
 let days={},vy,vm,sel=null,hora=null,step=null,busy=false;
 const dt=k=>new Date(k+'T00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
 async function load(){
@@ -44,7 +45,7 @@ function draw(){
   $('gr').innerHTML=h}
 function sheet(m){const sl=days[sel]||[];step='t';
   $('sh').innerHTML=`<h2>${dt(sel)}</h2><p class="s">Agendar sesión · elegí un horario</p>${m?`<div class="er">${m}</div>`:''}<div class="ch">${sl.length?sl.map(h=>`<button data-h="${h}">${h}</button>`).join(''):'<span class="s">Ya no quedan horarios este día.</span>'}</div>`;$('ov').classList.add('on')}
-function form(){step='f';$('sh').innerHTML=`<h2>${dt(sel)}</h2><p class="s">Sesión a las ${hora}</p><input id="fn" placeholder="Nombre" autocomplete="given-name"><input id="fa" placeholder="Apellido" autocomplete="family-name"><input id="ft" placeholder="Teléfono (opcional)" inputmode="tel" autocomplete="tel"><div class="er" id="er"></div><button class="pri" id="go">Agendar</button><button class="lk" id="bk">‹ Cambiar horario</button>`}
+function form(){step='f';$('sh').innerHTML=`<h2>${dt(sel)}</h2><p class="s">Sesión a las ${hora}</p><input id="fn" placeholder="Nombre" autocomplete="given-name"><input id="fa" placeholder="Apellido" autocomplete="family-name"><input id="ft" placeholder="Teléfono (con característica)" inputmode="tel" autocomplete="tel"><div class="er" id="er"></div><button class="pri" id="go">Agendar</button><button class="lk" id="bk">‹ Cambiar horario</button>`}
 const closeS=()=>{$('ov').classList.remove('on');step=null};
 $('ov').onclick=e=>{if(e.target===$('ov'))closeS()};
 $('gr').onclick=e=>{const b=e.target.closest('.d.on');if(b){sel=b.dataset.k;sheet()}};
@@ -55,10 +56,11 @@ $('sh').onclick=async e=>{
   if(e.target.id==='cl'){closeS();return}
   if(e.target.id!=='go'||busy)return;
   const n=$('fn').value.trim(),a=$('fa').value.trim();if(n.length<2||a.length<2){$('er').textContent='Completá nombre y apellido.';return}
+  if($('ft').value.replace(/\D/g,'').length<8){$('er').textContent='Ingresá un teléfono válido.';return}
   busy=true;$('go').disabled=true;
-  const r=await sb.rpc('public_book',{code:C,p_nombre:n,p_apellido:a,p_tel:$('ft').value.trim(),p_fecha:sel,p_hora:hora}),d=r.data||{};busy=false;
+  const r=await sb.rpc('public_book',{code:C,p_nombre:n,p_apellido:a,p_tel:$('ft').value.trim(),p_fecha:sel,p_hora:hora,p_dev:DEV}),d=r.data||{};busy=false;
   if(d.ok){step='ok';$('sh').innerHTML=`<div class="ok"><div style="font-size:42px">✓</div><h2>${d.estado==='pendiente'?'Solicitud enviada':'¡Turno agendado!'}</h2><p class="s">${d.estado==='pendiente'?'Tu turno queda pendiente de aprobación.':dt(sel)+' a las '+hora}</p><button class="pri" id="cl">Listo</button></div>`;load();return}
-  const M={ocupado:'Ese horario se acaba de ocupar. Elegí otro.',limite:'Ya alcanzaste el máximo de turnos que podés reservar.',cerrado:'Las reservas no están disponibles por ahora.'};
+  const M={ocupado:'Ese horario se acaba de ocupar. Elegí otro.',limite:'Ya alcanzaste el máximo de turnos que podés reservar.',cerrado:'Las reservas no están disponibles por ahora.',tel:'Ingresá un teléfono válido.',datos:'Revisá nombre y apellido.'};
   await load();if(d.error==='ocupado'){hora=null;sheet(M.ocupado)}else{$('go').disabled=false;$('er').textContent=M[d.error]||'No se pudo agendar. Probá de nuevo.'}};
 if(!sb||!C){$('s').textContent='Este link no es válido.'}else{load();setInterval(load,4000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()})}
 </script></body></html>
