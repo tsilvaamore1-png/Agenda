@@ -36,6 +36,7 @@ async function login(){
     d.innerHTML=`<div style="width:100%;max-width:340px;text-align:center"><h1 style="margin:0 0 6px;font-size:28px">Agenda</h1><p style="color:var(--mute);margin:0 0 20px">Entrá o creá tu cuenta</p><input id="lm" type="email" placeholder="Email" autocomplete="email" style="${I}"><input id="lp" type="password" placeholder="Contraseña (mínimo 6)" autocomplete="current-password" style="${I}"><div id="le" style="color:#d33;min-height:22px;font-size:14px"></div><button id="li" style="${B};background:var(--y);color:#111">Entrar</button><button id="lc" style="${B};background:var(--card);color:var(--fg)">Crear cuenta</button></div>`;
     document.body.appendChild(d);
     const q=i=>d.querySelector('#'+i),msg=t=>q('le').textContent=t;
+    d.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();q('li').click()}});
     const done=u=>{d.remove();res(u)};
     q('li').onclick=async()=>{const r=await sb.auth.signInWithPassword({email:q('lm').value.trim(),password:q('lp').value});r.error?msg('Email o contraseña incorrectos.'):done(r.data.user)};
     q('lc').onclick=async()=>{const r=await sb.auth.signUp({email:q('lm').value.trim(),password:q('lp').value});
@@ -50,9 +51,9 @@ async function pick(u){
   if(!m&&ms[0]){m=ms[0];id=m.agenda_id}
   if(!m){id=(await sb.rpc('create_agenda')).data;m={role:'admin'}}
   localStorage.setItem('ag',id);
-  const ag=(await sb.from('agendas').select('owner,invite_code,public_code').eq('id',id).single()).data;
+  const ag=(await sb.from('agendas').select('owner,invite_code,public_code,once_code').eq('id',id).single()).data;
   S={agenda:id,user:u,owner:ag.owner===u.id,role:m.role};
-  window.AGENDA_LINK=location.origin+location.pathname+'?join='+ag.invite_code;window.AGENDA_OWNER=S.owner;window.PUBLIC_LINK=location.origin+location.pathname.replace(/[^/]*$/,'')+'reservar.html?c='+ag.public_code}
+  window.AGENDA_LINK=location.origin+location.pathname+'?join='+ag.invite_code;window.AGENDA_OWNER=S.owner;window.PUBLIC_LINK=location.origin+location.pathname.replace(/[^/]*$/,'')+'reservar.html?c='+ag.public_code;window.ONCE_LINK=location.origin+location.pathname.replace(/[^/]*$/,'')+'reservar.html?c='+ag.once_code}
 
 async function init(){
   const u=await login();await pick(u);
@@ -66,4 +67,7 @@ window.logout=()=>sb.auth.signOut().then(()=>{localStorage.removeItem('ag');loca
 window.deleteAccount=async()=>{try{if(S.owner){const l=(await sb.storage.from('notas').list(S.agenda,{limit:1000})).data||[];if(l.length)await sb.storage.from('notas').remove(l.map(x=>S.agenda+'/'+x.name))}const r=await sb.rpc('delete_my_account');if(r.error){alert('No se pudo eliminar: '+r.error.message);return}await sb.auth.signOut()}catch(e){console.error(e)}localStorage.clear();location.reload()};
 window.uploadFile=async f=>{const path=S.agenda+'/'+Date.now()+'-'+f.name.replace(/[^\w.\-]/g,'_');const r=await sb.storage.from('notas').upload(path,f);return r.error?null:{name:f.name,path}};
 window.openFile=async p=>{const r=await sb.storage.from('notas').createSignedUrl(p,3600);if(r.data){const w=window.open(r.data.signedUrl,'_blank');if(!w)location.href=r.data.signedUrl}};
+window.rotateOnce=async()=>{const r=await sb.rpc('rotate_once_code',{a:S.agenda});if(r.error||!r.data)return null;window.ONCE_LINK=location.origin+location.pathname.replace(/[^/]*$/,'')+'reservar.html?c='+r.data;return window.ONCE_LINK};
+window.savePush=async s=>{const j=s.toJSON(),r=await sb.from('push_subs').upsert({endpoint:j.endpoint,agenda_id:S.agenda,user_id:S.user.id,sub:j});if(r.error)console.error(r.error);return !r.error};
+window.dropPush=async ep=>{await sb.from('push_subs').delete().eq('endpoint',ep)};
 })();

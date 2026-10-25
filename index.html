@@ -197,12 +197,12 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
 
 <div class="ov2" id="nm" style="z-index:10;align-items:center"><div class="dlg"><p>¿Cómo te llamás? Así te van a ver los demás miembros.</p><input type="text" id="nmi" placeholder="Tu nombre" style="width:100%;background:var(--card);border:1px solid transparent;border-radius:12px;padding:13px;margin-bottom:14px;text-align:center"><div class="acts"><button class="pri" id="nmok">Guardar</button></div></div></div>
 <div class="ov2" id="wl" style="z-index:9;align-items:center"><div class="dlg"><p id="wlt"></p><div class="acts"><button class="pri" id="wlo">Entendido</button></div></div></div>
-<div id="bar"><button id="add">+ Agregar turno</button><button id="ask">💬 Consultar</button></div>
+<div id="bar"><button id="add">+ Agregar turno</button><button id="ask">Consultar</button></div>
 
 <div class="ov2" id="as"><div class="sheet">
   <div class="heard" style="font-size:16px;font-weight:600;color:var(--fg)">Consultar</div>
   <div id="ares"></div>
-  <div class="aqr"><input type="text" id="aq" placeholder="Pedime algo…"><button id="amic" aria-label="Dictar">🎤</button><button id="ago" aria-label="Enviar">→</button></div>
+  <div class="aqr"><input type="text" id="aq" placeholder="Pedime algo…"><button id="amic" aria-label="Dictar"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.125em"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button><button id="ago" aria-label="Enviar">→</button></div>
   <div class="heard" id="ahint" style="margin-top:8px"></div>
 </div></div>
 
@@ -226,7 +226,7 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
     <div class="v on" id="vD">
       <div class="pre" id="pre"></div>
       <div class="micw">
-        <button id="mic" aria-label="Dictar">🎤</button>
+        <button id="mic" aria-label="Dictar"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.125em"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button>
         <div id="cap">Tocá y decí nombre, apellido, fecha y hora. Si es primera sesión, decilo.</div>
       </div>
       <div class="txt"><input type="text" id="txt" placeholder="Gustavo Pérez mañana 17 horas"><button id="go">→</button></div>
@@ -274,7 +274,7 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
 <div class="ov2" id="nt"><div class="sheet">
   <div class="heard" id="ntt" style="font-size:16px;font-weight:600;color:var(--fg)"></div>
   <textarea id="nta" placeholder="Escribí lo que quieras…"></textarea>
-  <div class="nrow"><button class="att" id="ndic">🎤 Dictar</button><button class="att" id="nat">📎 Adjuntar</button></div>
+  <div class="nrow"><button class="att" id="ndic"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.125em"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg> Dictar</button><button class="att" id="nat">📎 Adjuntar</button></div>
   <div class="heard" id="nhint"></div>
   <input type="file" id="nfi" multiple hidden>
   <div id="nf"></div>
@@ -309,6 +309,7 @@ const key=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+Stri
 const today=new Date();
 const MES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const DIA=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
+const MI='<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.125em"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg>';
 const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
 let vy=today.getFullYear(), vm=today.getMonth(), sel=key(today), multi=false, pend=[], uid=1, py=vy;
 const mk=(o,h,nom,ape)=>{const d=new Date(today);d.setDate(d.getDate()+o);return{id:String(uid++),fecha:key(d),hora:h,nombre:nom,apellido:ape}};
@@ -394,7 +395,7 @@ function parse(raw){
 /* ---------- Pantalla de dictado / verificación ---------- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null,live=false,got=false;
-function fallback(){live=false;$('mic').classList.remove('on');$('cap').innerHTML='Acá el micrófono está bloqueado. Tocá el campo de abajo, después el <b>🎤 de tu teclado</b> y hablá.';$('txt').classList.add('hl');$('txt').focus()}
+function fallback(){live=false;$('mic').classList.remove('on');$('cap').innerHTML='Acá el micrófono está bloqueado. Tocá el campo de abajo, después el <b>micrófono de tu teclado</b> y hablá.';$('txt').classList.add('hl');$('txt').focus()}
 const view=v=>{$('vD').classList.toggle('on',v==='D');$('vR').classList.toggle('on',v==='R')};
 function setMode(m){multi=m;$('mI').classList.toggle('on',!m);$('mM').classList.toggle('on',m);
   $('ok').textContent=m?'Sumar a la lista':'Agendar';drawPre()}
@@ -491,14 +492,14 @@ $('ndone').onclick=closeNotes;
 $('nt').onclick=e=>{if(e.target===$('nt'))closeNotes()};
 $('nat').onclick=()=>$('nfi').click();
 let nrec=null,nlive=false,ngot=false;
-function nkb(){nlive=false;$('ndic').classList.remove('on');$('ndic').textContent='🎤 Dictar';$('nhint').innerHTML='Acá el micrófono está bloqueado. Tocá la nota y usá el <b>🎤 de tu teclado</b>.';$('nta').focus()}
+function nkb(){nlive=false;$('ndic').classList.remove('on');$('ndic').innerHTML=MI+' Dictar';$('nhint').innerHTML='Acá el micrófono está bloqueado. Tocá la nota y usá el <b>micrófono de tu teclado</b>.';$('nta').focus()}
 $('ndic').onclick=()=>{
   if(!SR){nkb();return}
   if(nlive){nrec.stop();return}
   try{nrec=new SR();nrec.lang='es-AR';nrec.interimResults=false;
     nrec.onresult=e=>{ngot=true;const v=$('nta').value;$('nta').value=(v&&!/\s$/.test(v)?v+' ':v)+e.results[0][0].transcript};
     nrec.onerror=()=>{ngot=true;nkb()};
-    nrec.onend=()=>{nlive=false;$('ndic').classList.remove('on');$('ndic').textContent='🎤 Dictar';if(!ngot)nkb()};
+    nrec.onend=()=>{nlive=false;$('ndic').classList.remove('on');$('ndic').innerHTML=MI+' Dictar';if(!ngot)nkb()};
     ngot=false;nrec.start();nlive=true;$('ndic').classList.add('on');$('ndic').textContent='⏹ Escuchando…';$('nhint').textContent=''}
   catch(e){nkb()}
 };
@@ -616,7 +617,7 @@ $('ask').onclick=()=>{aHome();$('as').classList.add('on')};
 $('as').onclick=e=>{if(e.target===$('as'))closeA()};
 $('ago').onclick=sendA;
 $('aq').onkeydown=e=>{if(e.key==='Enter')sendA()};
-function akb(){alive=false;$('amic').classList.remove('on');$('ahint').innerHTML='Acá el micrófono está bloqueado. Tocá el campo y usá el <b>🎤 de tu teclado</b>.';$('aq').focus()}
+function akb(){alive=false;$('amic').classList.remove('on');$('ahint').innerHTML='Acá el micrófono está bloqueado. Tocá el campo y usá el <b>micrófono de tu teclado</b>.';$('aq').focus()}
 $('amic').onclick=()=>{
   if(!SR){akb();return}
   if(alive){arec.stop();return}

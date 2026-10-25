@@ -2,15 +2,17 @@
 (()=>{
 const z=n=>String(n).padStart(2,'0');
 let bk={enabled:false,manual:false,max:2},hist=[],fich={},fsel=null,fq='';
-const TT={H:'Horarios',P:'Permisos',R:'Reservas por link',F:'Fichas',Hi:'Historial',IO:'Importar y exportar',C:'Cuenta'};
-const SHOW={H:()=>renderS(),P:()=>renderM(),R:()=>renderR(),F:()=>renderF(),Hi:()=>renderHi()};
+const TT={H:'Horarios',P:'Permisos',R:'Reservas por link',Rm:'Recordatorios',F:'Fichas',Hi:'Historial',IO:'Importar y exportar',C:'Cuenta'};
+const SHOW={H:()=>renderS(),P:()=>renderM(),R:()=>renderR(),Rm:()=>renderRm(),F:()=>renderF(),Hi:()=>renderHi()};
 window.sub=n=>{$('sMenu').style.display=n==='m'?'':'none';Object.keys(TT).forEach(k=>$('s'+k).style.display=n===k?'':'none');
   $('sback').style.display=n==='m'?'none':'';$('sttl').textContent=TT[n]||'Ajustes';if(SHOW[n])SHOW[n]()};
 [...$('sMenu').children].forEach(b=>{if(/Cerrar sesi/.test(b.textContent))b.remove()});
 function addScreen(k,html){const b=document.createElement('button');b.className='menub';b.innerHTML=TT[k]+'<span>\u203a</span>';b.onclick=()=>sub(k);$('sMenu').appendChild(b);
   const d=document.createElement('div');d.id='s'+k;d.style.display='none';d.innerHTML=html;$('pgS').appendChild(d)}
 const LW='style="width:auto"',LK='style="width:100%;background:var(--card);border:0;border-radius:12px;padding:13px;margin-bottom:10px;color:var(--fg)"';
-addScreen('R',`<div class="rv"><div class="r"><label ${LW}>Activar link de reservas</label><button class="sw" id="bkOn" aria-label="Activar"></button></div><div class="r"><label ${LW}>Aprobar cada reserva a mano</label><button class="sw" id="bkMan" aria-label="Aprobaci\u00f3n manual"></button></div><div class="r"><label ${LW}>M\u00e1x. turnos por persona</label><input type="number" id="bkMax" min="1" max="20" inputmode="numeric" style="max-width:70px"></div></div><div class="heard" style="white-space:normal;margin:8px 0 12px">Quien abre el link no inicia sesi\u00f3n: solo ve d\u00edas y horarios libres y puede reservar. No ve nombres ni datos de nadie.</div><input type="text" id="bkLink" readonly ${LK}><button class="newn" id="bkCopy" style="background:var(--y);color:var(--yfg);border:0">Copiar link</button><h2>Pendientes de aprobar</h2><div id="bkPend"></div>`);
+const CH=on=>'border:1px solid '+(on?'var(--y)':'var(--line)')+';background:'+(on?'var(--y)':'var(--card)')+';color:'+(on?'var(--yfg)':'var(--fg)')+';border-radius:18px;padding:10px 16px;font:inherit;font-weight:600;margin:0 8px 8px 0;cursor:pointer';
+addScreen('R',`<div class="rv"><div class="r"><label ${LW}>Aprobar cada reserva a mano</label><button class="sw" id="bkMan" aria-label="Aprobaci\u00f3n manual"></button></div></div><h2>Link general</h2><div class="rv"><div class="r"><label ${LW}>Activar</label><button class="sw" id="bkOn" aria-label="Activar"></button></div></div><div class="heard" style="white-space:normal;margin:8px 0 12px">Sin l\u00edmite de reservas. Pide nombre, apellido y tel\u00e9fono. Quien lo abre no inicia sesi\u00f3n ni ve datos de nadie.</div><input type="text" id="bkLink" readonly ${LK}><button class="newn" id="bkCopy" style="background:var(--y);color:var(--yfg);border:0">Copiar link</button><h2>Link de un solo uso</h2><div class="rv"><div class="r"><label ${LW}>Activar</label><button class="sw" id="bkOnceOn" aria-label="Activar link de un solo uso"></button></div></div><div class="heard" style="white-space:normal;margin:8px 0 12px">Pod\u00e9s mandarlo a mucha gente: cada persona puede reservar una sola sesi\u00f3n (se controla por tel\u00e9fono, nombre y dispositivo). Si lo cambi\u00e1s, el anterior deja de funcionar y todos pueden volver a usar el nuevo.</div><input type="text" id="bkOLink" readonly ${LK}><button class="newn" id="bkOCopy" style="background:var(--y);color:var(--yfg);border:0">Copiar link</button><button class="menub" id="bkRot" style="margin-top:10px">Cambiar link<span>\u203a</span></button><h2>Pendientes de aprobar</h2><div id="bkPend"></div>`);
+addScreen('Rm','<div id="rmBody"></div>');
 addScreen('F','<div id="fBody"></div>');
 addScreen('Hi','<div id="hiBody"></div>');
 addScreen('IO',`<h2>Exportar</h2><button class="menub" id="exX">Excel (.xlsx)<span>\u2193</span></button><button class="menub" id="exI">Calendario (.ics)<span>\u2193</span></button><button class="menub" id="exJ">Copia de la agenda (.json)<span>\u2193</span></button><h2>Importar</h2><button class="menub" id="imB">Elegir archivo<span>\u2191</span></button><input type="file" id="imF" accept=".xlsx,.xls,.csv,.ics,.json" hidden><div class="heard" id="imM" style="white-space:normal;margin-top:8px">Excel o CSV con columnas Nombre, Apellido, Fecha, Hora y Primera sesi\u00f3n (S\u00ed o vac\u00edo); archivo .ics de Google Calendar u otro calendario; o una copia .json de esta app.</div>`);
@@ -28,15 +30,16 @@ window.renderHi=()=>{$('hiBody').innerHTML=hist.length?hist.map(h=>{const d=new 
 
 /* reservas por link */
 const saveBk=()=>{if(db)db.doc('booking/main').set(bk)};
-window.renderR=()=>{$('bkOn').classList.toggle('on',!!bk.enabled);$('bkMan').classList.toggle('on',!!bk.manual);
-  if(document.activeElement!==$('bkMax'))$('bkMax').value=bk.max||2;
-  $('bkLink').value=window.PUBLIC_LINK||'(disponible al iniciar sesi\u00f3n)';
+window.renderR=()=>{$('bkOn').classList.toggle('on',!!bk.enabled);$('bkMan').classList.toggle('on',!!bk.manual);$('bkOnceOn').classList.toggle('on',!!bk.onceEnabled);
+  $('bkLink').value=window.PUBLIC_LINK||'(disponible al iniciar sesi\u00f3n)';$('bkOLink').value=window.ONCE_LINK||'(disponible al iniciar sesi\u00f3n)';
   const p=turnos.filter(t=>t.estado==='pendiente').sort((a,b)=>(a.fecha+a.hora<b.fecha+b.hora)?-1:1);
   $('bkPend').innerHTML=p.length?p.map(t=>`<div class="t" style="cursor:default"><div style="flex:1;min-width:0"><span class="gt">${esc(t.nombre+' '+t.apellido)}</span><div class="mut">${lab(t)}</div></div><button class="nb" data-ok="${t.id}">Aprobar</button><button class="nb empty0" data-no="${t.id}">Rechazar</button></div>`).join(''):'<div class="empty">Sin reservas pendientes</div>'};
 $('bkOn').onclick=()=>{bk.enabled=!bk.enabled;saveBk();renderR()};
 $('bkMan').onclick=()=>{bk.manual=!bk.manual;saveBk();renderR()};
-$('bkMax').onchange=()=>{bk.max=Math.max(1,Math.min(20,+$('bkMax').value||2));saveBk()};
-$('bkCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('bkLink').value)}catch(e){$('bkLink').select();document.execCommand('copy')}$('bkCopy').textContent='\u00a1Copiado!';setTimeout(()=>$('bkCopy').textContent='Copiar link',1500)};
+$('bkOnceOn').onclick=()=>{bk.onceEnabled=!bk.onceEnabled;saveBk();renderR()};
+const cp=(b,i)=>$(b).onclick=async()=>{const x=$(i);try{await navigator.clipboard.writeText(x.value)}catch(err){x.select();document.execCommand('copy')}$(b).textContent='\u00a1Copiado!';setTimeout(()=>$(b).textContent='Copiar link',1500)};
+cp('bkCopy','bkLink');cp('bkOCopy','bkOLink');
+$('bkRot').onclick=()=>ask('Si cambi\u00e1s el link, el anterior deja de funcionar. \u00bfCambiarlo?',async()=>{await(window.rotateOnce&&window.rotateOnce());renderR()},'Cambiar');
 $('bkPend').onclick=e=>{const o=e.target.closest('[data-ok]'),n=e.target.closest('[data-no]');
   if(o){const t=turnos.find(x=>x.id===o.dataset.ok);t.estado='confirmado';saveT(t);render()}
   if(n)delT(n.dataset.no)};
@@ -53,8 +56,8 @@ window.renderF=()=>{
     const q=nz(fq).split(/\s+/).filter(Boolean),vis=ps.filter(p=>{const n=nz(p.nombre+' '+p.apellido);return q.every(x=>n.includes(x))});
     $('fList').innerHTML=vis.length?vis.map(p=>`<div class="t" data-f="${p.k}"><div style="flex:1;min-width:0"><span class="gt">${esc(p.nombre+' '+p.apellido)}</span><div class="mut">${p.ts.length} ${p.ts.length>1?'sesiones':'sesi\u00f3n'}</div></div><span style="color:var(--mute)">\u203a</span></div>`).join(''):'<div class="empty">'+(ps.length?'Sin resultados':'Todav\u00eda no hay consultantes')+'</div>';return}
   const f=fich[fsel]||{},ts=p.ts.slice().sort((a,b)=>(b.fecha+b.hora<a.fecha+a.hora)?-1:1),tel=f.tel||(ts.find(t=>t.tel)||{}).tel||'',first=p.ts.map(t=>t.fecha).sort()[0],d=new Date(),n=key(d)+' '+z(d.getHours())+':'+z(d.getMinutes());
-  $('fBody').innerHTML=`<button class="hoy" id="fBack">\u2039 Todas las fichas</button><h2 style="color:var(--fg);font-size:22px;margin:14px 0 8px;text-transform:none">${esc(p.nombre+' '+p.apellido)}</h2><div class="rv"><div class="r"><label>Tel\u00e9fono</label><input type="text" id="fTel" inputmode="tel" value="${esc(tel)}" placeholder="Agregar"></div><div class="r"><label ${LW}>Primera sesi\u00f3n</label><span>${fS(first)}</span></div><div class="r"><label>Frecuencia</label><span>${freq(p.ts)}</span></div></div><h2>Historial de sesiones</h2>`+ts.map(t=>{const st=t.estado==='pendiente'?'Por aprobar':(t.fecha+' '+t.hora<n?'Realizada':'Pendiente');return `<div class="t" style="cursor:default"><b style="border-left-color:${colorOf(t.by)}">${t.hora}</b><span>${fS(t.fecha)}</span><small class="mut" style="margin-left:auto">${st}</small></div>`}).join('')};
-$('fBody').onclick=e=>{const c=e.target.closest('[data-f]');if(c){fsel=c.dataset.f;renderF()}if(e.target.id==='fBack'){fsel=null;renderF()}};
+  $('fBody').innerHTML=`<button class="hoy" id="fBack">\u2039 Todas las fichas</button><h2 style="color:var(--fg);font-size:22px;margin:14px 0 8px;text-transform:none">${esc(p.nombre+' '+p.apellido)}</h2><div class="rv"><div class="r"><label>Tel\u00e9fono</label><input type="text" id="fTel" inputmode="tel" value="${esc(tel)}" placeholder="Agregar"></div><div class="r"><label ${LW}>Primera sesi\u00f3n</label><span>${fS(first)}</span></div><div class="r"><label>Frecuencia</label><span>${freq(p.ts)}</span></div><div class="r"><label ${LW}>Permiso para recordarle por WhatsApp</label><button class="sw${f.wa?' on':''}" id="fWa" aria-label="Permiso WhatsApp"></button></div></div><h2>Historial de sesiones</h2>`+ts.map(t=>{const st=t.estado==='pendiente'?'Por aprobar':(t.fecha+' '+t.hora<n?'Realizada':'Pendiente');return `<div class="t" style="cursor:default"><b style="border-left-color:${colorOf(t.by)}">${t.hora}</b><span>${fS(t.fecha)}</span><small class="mut" style="margin-left:auto">${st}</small></div>`}).join('')};
+$('fBody').onclick=e=>{const c=e.target.closest('[data-f]');if(c){fsel=c.dataset.f;renderF()}if(e.target.id==='fBack'){fsel=null;renderF()}if(e.target.id==='fWa'&&db&&fsel)db.doc('fichas/'+fsel).update({wa:!(fich[fsel]||{}).wa})};
 $('fBody').oninput=e=>{if(e.target.id==='fQ'){fq=e.target.value;renderF()}};
 $('fBody').onchange=e=>{if(e.target.id==='fTel'&&db&&fsel)db.doc('fichas/'+fsel).update({tel:e.target.value.trim()})};
 
@@ -101,8 +104,37 @@ $('imF').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)re
 $('cOut').onclick=()=>window.logout&&window.logout();
 $('cDel').onclick=()=>ask(window.AGENDA_OWNER?'Sos el due\u00f1o: se borra tu cuenta Y la agenda completa para todos los miembros. No se puede deshacer.':'Se borra tu cuenta. La agenda sigue para los dem\u00e1s. No se puede deshacer.',()=>ask('\u00daltima confirmaci\u00f3n: \u00bfeliminar definitivamente?',()=>window.deleteAccount&&window.deleteAccount(),'S\u00ed, eliminar'),'Continuar');
 
+/* recordatorios */
+let rm={push:[60],wa:{on:false,mins:[1440]}},rmNote='';
+const PO=[[15,'15 min'],[30,'30 min'],[60,'1 hora'],[120,'2 horas'],[1440,'1 d\u00eda']],WO=[[120,'2 horas'],[1440,'1 d\u00eda'],[2880,'2 d\u00edas']];
+const saveRm=()=>{if(db)db.doc('config/remind').set(rm)};
+const u8=b=>{const p='='.repeat((4-b.length%4)%4),r=atob((b+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(r,c=>c.charCodeAt(0))};
+const regP=async()=>{try{const reg=await navigator.serviceWorker.ready;return{reg,sub:await reg.pushManager.getSubscription()}}catch(err){return{}}};
+window.renderRm=async()=>{
+  const chips=(arr,list,k)=>list.map(([m,l])=>`<button data-k="${k}" data-m="${m}" style="${CH(arr.includes(m))}">${l}</button>`).join('');
+  const st=await regP(),on=!!st.sub;
+  $('rmBody').innerHTML=`<h2>Avisos para m\u00ed</h2><div class="heard" style="white-space:normal;margin:0 0 10px">Te llega una notificaci\u00f3n en este celular aunque la app est\u00e9 cerrada. Suena con el sonido de notificaciones de tu tel\u00e9fono. En iPhone hay que instalar la app en la pantalla de inicio.</div><button class="menub" id="rmPush">${on?'Desactivar en este dispositivo':'Activar en este dispositivo'}<span>\u203a</span></button><button class="menub" id="rmTest">Probar un aviso<span>\u203a</span></button><div class="heard" style="margin:12px 0 8px">Avisarme con anticipaci\u00f3n de:</div><div>${chips(rm.push||[],PO,'p')}</div><h2>WhatsApp a consultantes</h2><div class="rv"><div class="r"><label ${LW}>Enviar recordatorios autom\u00e1ticos</label><button class="sw${rm.wa&&rm.wa.on?' on':''}" id="rmWa" aria-label="WhatsApp"></button></div></div><div class="heard" style="white-space:normal;margin:8px 0">Se env\u00eda con tu WhatsApp Business (mensaje de plantilla aprobado por Meta), solo entre las 8 y las 22 h y solo a quienes dieron permiso (en su ficha o al reservar por link).</div><div class="heard" style="margin:12px 0 8px">Recordarles con anticipaci\u00f3n de:</div><div>${chips((rm.wa&&rm.wa.mins)||[],WO,'w')}</div><div class="heard" id="rmMsg" style="white-space:normal;margin-top:8px">${rmNote}</div>`};
+const note=t=>{rmNote=t;if($('rmMsg'))$('rmMsg').textContent=t};
+$('rmBody').onclick=async e=>{
+  const c=e.target.closest('[data-k]');
+  if(c){const m=+c.dataset.m;if(c.dataset.k==='p'){const a=rm.push||[];rm.push=a.includes(m)?a.filter(x=>x!==m):[...a,m]}else{rm.wa=rm.wa||{on:false,mins:[]};const a=rm.wa.mins||[];rm.wa.mins=a.includes(m)?a.filter(x=>x!==m):[...a,m]}saveRm();renderRm();return}
+  const b=e.target.closest('button');if(!b)return;
+  if(b.id==='rmWa'){rm.wa=rm.wa||{mins:[1440]};rm.wa.on=!rm.wa.on;saveRm();renderRm();return}
+  if(b.id==='rmTest'){try{const{reg}=await regP();if(Notification.permission!=='granted'&&await Notification.requestPermission()!=='granted'){note('Permiso de notificaciones denegado.');return}await reg.showNotification('Sesi\u00f3n con Gustavo P\u00e9rez',{body:'Hoy a las 15:00 (en 1 hora)'})}catch(err){note('Este navegador no permite avisos.')}return}
+  if(b.id==='rmPush'){
+    if(!('PushManager' in window)){note('Este navegador no permite avisos. En iPhone, instal\u00e1 la app en la pantalla de inicio.');return}
+    if(!window.VAPID_KEY){note('Falta VAPID_KEY en config.js.');return}
+    try{const{reg,sub}=await regP();
+      if(sub){await window.dropPush(sub.endpoint);await sub.unsubscribe();note('')}
+      else{if(await Notification.requestPermission()!=='granted'){note('Permiso de notificaciones denegado.');return}
+        const s=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(window.VAPID_KEY)});
+        if(!(await window.savePush(s))){note('No se pudo guardar este dispositivo.');return}note('')}
+    }catch(err){console.error(err);note('No se pudo activar los avisos.')}
+    renderRm()}};
+
 /* suscripciones cuando hay conexi\u00f3n */
 (async()=>{try{const d=await claude.use('db');if(!d)return;
+  d.doc('config/remind').onSnapshot(s=>{if(s.exists)rm={...rm,...s.data()};if($('sRm').style.display!=='none')renderRm()});
   d.doc('booking/main').onSnapshot(s=>{if(s.exists)bk={...bk,...s.data()};renderR()});
   d.collection('hist').onSnapshot(s=>{hist=s.docs.map(x=>x.data()).sort((a,b)=>b.ts-a.ts).slice(0,150);renderHi()});
   d.collection('fichas').onSnapshot(s=>{fich={};s.docs.forEach(x=>fich[x.id]=x.data());if($('sF').style.display!=='none')renderF()})}catch(err){console.error(err)}})();

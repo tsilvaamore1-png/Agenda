@@ -1,6 +1,12 @@
-// Primero red, luego caché: los cambios se ven al recargar y la app abre aunque no haya señal.
-const C='agenda-v2';
-self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./','index.html','shim.js','extra.js','config.js','manifest.webmanifest'])));self.skipWaiting()});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))));self.clients.claim()});
-self.addEventListener('fetch',e=>{if(e.request.method!=='GET'||!e.request.url.startsWith(self.location.origin))return;
-  e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(C).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request)))});
+// Red primero (las actualizaciones se ven al recargar) + avisos push
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch',e=>{
+  if(e.request.method!=='GET'||new URL(e.request.url).origin!==location.origin)return;
+  e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open('agenda-v1').then(x=>x.put(e.request,c)).catch(()=>{});return r}).catch(()=>caches.match(e.request)))});
+self.addEventListener('push',e=>{
+  let d={};try{d=e.data.json()}catch(_){d={title:'Agenda',body:e.data?e.data.text():''}}
+  e.waitUntil(self.registration.showNotification(d.title||'Agenda',{body:d.body||'',tag:d.tag}))});
+self.addEventListener('notificationclick',e=>{
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({type:'window'}).then(l=>l.length?l[0].focus():self.clients.openWindow('./')))});
