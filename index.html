@@ -210,8 +210,10 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
   <div class="heard" id="bttl" style="font-size:16px;font-weight:600;color:var(--fg)">Nuevo bloqueo</div>
   <div class="rv">
     <div class="r"><label>Motivo</label><input type="text" id="bm" placeholder="Vacaciones, trámite…"></div>
-    <div class="r"><label>Desde</label><input type="date" id="bd"></div>
-    <div class="r"><label>Hasta</label><input type="date" id="bu"></div>
+    <div class="r"><label>Todas las semanas</label><button class="sw" id="brep" aria-label="Repetir todas las semanas"></button></div>
+    <div class="r" id="bdr" style="display:none"><label>Días</label><div id="bdw" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"></div></div>
+    <div class="r" id="brd1"><label>Desde</label><input type="date" id="bd"></div>
+    <div class="r" id="brd2"><label>Hasta</label><input type="date" id="bu"></div>
     <div class="r"><label>Todo el día</label><button class="sw on" id="bt" aria-label="Todo el día"></button></div>
     <div class="r" id="bhr" style="display:none"><label>Horas</label><input type="time" id="bh1"><span>–</span><input type="time" id="bh2"></div>
   </div>
@@ -294,12 +296,14 @@ const lget=id=>{try{return localStorage.getItem('nt:'+id)||''}catch(e){return ''
 const lset=(id,v)=>{try{v?localStorage.setItem('nt:'+id,v):localStorage.removeItem('nt:'+id)}catch(e){}};
 const hh0=on=>({on,desde:'09:00',hasta:'20:00'});
 let cfg={horas:[hh0(false),hh0(true),hh0(true),hh0(true),hh0(true),hh0(true),hh0(true)],blocks:[]};
-const blocked=k=>cfg.blocks.some(b=>!b.hd&&k>=b.desde&&k<=b.hasta);
+const bOn=(b,k)=>b.dias?b.dias.includes(fmt(k).getDay()):(k>=b.desde&&k<=b.hasta);
+const DN=['domingos','lunes','martes','miércoles','jueves','viernes','sábados'];
+const blocked=k=>cfg.blocks.some(b=>!b.hd&&bOn(b,k));
 const lab=t=>fmt(t.fecha).toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'numeric'})+' '+t.hora;
 function confl(t,extra){
   const s=mins(t.hora);
   for(const o of [...turnos,...extra]){if(o.fecha===t.fecha&&Math.abs(mins(o.hora)-s)<90)return 'choca con '+esc(o.nombre+' '+o.apellido)+' ('+o.hora+', 60 min + 30 de margen)'}
-  const b=cfg.blocks.find(b=>t.fecha>=b.desde&&t.fecha<=b.hasta&&(!b.hd||(s<mins(b.hh)&&s+60>mins(b.hd))));
+  const b=cfg.blocks.find(b=>bOn(b,t.fecha)&&(!b.hd||(s<mins(b.hh)&&s+60>mins(b.hd))));
   if(b)return 'está bloqueado ('+esc(b.motivo||'bloqueo')+')';
   const h=cfg.horas[fmt(t.fecha).getDay()];
   if(!h.on)return 'ese día no atendés (lo cambiás en Ajustes)';
@@ -680,7 +684,7 @@ $('goH').onclick=()=>sub('H');$('goP').onclick=()=>sub('P');$('sback').onclick=(
       $('bar').style.display=(canW&&$('app').style.display!=='none')?'':'none';
       const p=await user.profiles(members.map(x=>x.id));members.forEach(x=>{mname[x.id]=x.name||(p[x.id]&&p[x.id].name)||''});
       legend();renderM();render()});
-  }catch(e){db=null}
+  }catch(e){console.error('Conexión:',e);db=null}
   legend();
 })();
 
@@ -710,7 +714,7 @@ function renderS(){
   const nm=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   $('hrs').innerHTML=[1,2,3,4,5,6,0].map(d=>{const h=cfg.horas[d];
     return `<div class="r hr" data-d="${d}"><label>${nm[d]}</label><button class="sw${h.on?' on':''}" aria-label="${nm[d]}"></button><input type="time" data-k="desde" value="${h.desde}"${h.on?'':' disabled'}><span>–</span><input type="time" data-k="hasta" value="${h.hasta}"${h.on?'':' disabled'}></div>`}).join('');
-  $('blist').innerHTML=cfg.blocks.length?cfg.blocks.map(b=>`<div class="t" data-id="${b.id}"><div style="flex:1;min-width:0"><span class="gt">${esc(b.motivo||'Bloqueo')}</span><div class="mut">${fS(b.desde)}${b.hasta!==b.desde?' – '+fS(b.hasta):''}${b.hd?' · '+b.hd+' a '+b.hh:' · todo el día'}</div></div><button class="nb empty0" data-b="${b.id}" aria-label="Quitar">🗑</button></div>`).join(''):'<div class="empty">Sin bloqueos</div>'}
+  $('blist').innerHTML=cfg.blocks.length?cfg.blocks.map(b=>`<div class="t" data-id="${b.id}"><div style="flex:1;min-width:0"><span class="gt">${esc(b.motivo||'Bloqueo')}</span><div class="mut">${b.dias?'Todos los '+b.dias.slice().sort((x,y)=>((x+6)%7)-((y+6)%7)).map(d=>DN[d]).join(', '):fS(b.desde)+(b.hasta!==b.desde?' – '+fS(b.hasta):'')}${b.hd?' · '+b.hd+' a '+b.hh:' · todo el día'}</div></div><button class="nb empty0" data-b="${b.id}" aria-label="Quitar">🗑</button></div>`).join(''):'<div class="empty">Sin bloqueos</div>'}
 $('hrs').onclick=e=>{const s=e.target.closest('.sw');if(!s)return;const h=cfg.horas[+s.closest('.hr').dataset.d];h.on=!h.on;saveCfg();renderS();render()};
 $('hrs').onchange=e=>{const i=e.target;if(i.type!=='time'||!i.value)return;cfg.horas[+i.closest('.hr').dataset.d][i.dataset.k]=i.value;saveCfg()};
 $('blist').onclick=e=>{const x=e.target.closest('[data-b]');
@@ -721,20 +725,27 @@ let bid=null;
 $('bnew').onclick=()=>openBk(null);
 function openBk(id){
   const b=id?cfg.blocks.find(x=>String(x.id)===String(id)):null;bid=b?b.id:null;
-  $('bm').value=b?b.motivo:'';$('bd').value=b?b.desde:'';$('bu').value=b&&b.hasta!==b.desde?b.hasta:'';
+  $('bm').value=b?b.motivo:'';$('bd').value=b&&!b.dias?b.desde:'';$('bu').value=b&&!b.dias&&b.hasta!==b.desde?b.hasta:'';bsetRep(!!(b&&b.dias),b&&b.dias||[]);
   const all=!b||!b.hd;$('bt').classList.toggle('on',all);$('bhr').style.display=all?'none':'';$('bh1').value=(b&&b.hd)||'';$('bh2').value=(b&&b.hh)||'';
   $('bttl').textContent=b?'Editar bloqueo':'Nuevo bloqueo';$('berr').textContent='';bw=false;$('bk').classList.add('on')}
+function bsetRep(on,d){$('brep').classList.toggle('on',on);$('bdr').style.display=on?'':'none';$('brd1').style.display=$('brd2').style.display=on?'none':'';
+  $('bdw').innerHTML=[1,2,3,4,5,6,0].map(i=>`<button type="button" data-d="${i}" class="${d.includes(i)?'on':''}" style="width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:${d.includes(i)?'var(--y)':'var(--card)'};color:${d.includes(i)?'var(--yfg)':'var(--fg)'};font:inherit;font-weight:600;cursor:pointer">${'DLMXJVS'[i]}</button>`).join('')}
+$('brep').onclick=()=>bsetRep(!$('brep').classList.contains('on'),bdias());
+const bdias=()=>[...$('bdw').querySelectorAll('.on')].map(x=>+x.dataset.d);
+$('bdw').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;const d=bdias(),i=+b.dataset.d;bsetRep(true,d.includes(i)?d.filter(x=>x!==i):[...d,i])};
 $('bt').onclick=()=>{$('bt').classList.toggle('on');$('bhr').style.display=$('bt').classList.contains('on')?'none':''};
 $('bcan').onclick=()=>$('bk').classList.remove('on');
 $('bk').onclick=e=>{if(e.target===$('bk'))$('bk').classList.remove('on')};
 $('bsave').onclick=()=>{
-  const b={id:Date.now(),motivo:$('bm').value.trim(),desde:$('bd').value,hasta:$('bu').value||$('bd').value};
-  if(!b.desde){$('berr').textContent='Elegí desde qué día.';return}
-  if(b.hasta<b.desde){$('berr').textContent='La fecha final no puede ser anterior al inicio.';return}
+  const rep=$('brep').classList.contains('on'),b={id:Date.now(),motivo:$('bm').value.trim()};
+  if(rep){b.dias=bdias();b.desde='';b.hasta='';if(!b.dias.length){$('berr').textContent='Elegí al menos un día de la semana.';return}}
+  else{b.desde=$('bd').value;b.hasta=$('bu').value||$('bd').value;
+    if(!b.desde){$('berr').textContent='Elegí desde qué día.';return}
+    if(b.hasta<b.desde){$('berr').textContent='La fecha final no puede ser anterior al inicio.';return}}
   if(!$('bt').classList.contains('on')){b.hd=$('bh1').value;b.hh=$('bh2').value;if(!b.hd||!b.hh||b.hh<=b.hd){$('berr').textContent='Completá un rango de horas válido.';return}}
-  const n=turnos.filter(t=>t.fecha>=b.desde&&t.fecha<=b.hasta&&(!b.hd||(mins(t.hora)<mins(b.hh)&&mins(t.hora)+60>mins(b.hd)))).length;
+  const n=turnos.filter(t=>(b.dias?t.fecha>=key(today)&&b.dias.includes(fmt(t.fecha).getDay()):t.fecha>=b.desde&&t.fecha<=b.hasta)&&(!b.hd||(mins(t.hora)<mins(b.hh)&&mins(t.hora)+60>mins(b.hd)))).length;
   if(n&&!bw){bw=true;$('berr').textContent='Ya tenés '+n+(n>1?' turnos':' turno')+' en ese período. Tocá Guardar de nuevo para bloquear igual.';return}
-  if(bid){cfg.blocks=cfg.blocks.filter(x=>x.id!==bid);b.id=bid}cfg.blocks.push(b);cfg.blocks.sort((x,y)=>x.desde<y.desde?-1:1);saveCfg();$('bk').classList.remove('on');renderS();render()};
+  if(bid){cfg.blocks=cfg.blocks.filter(x=>x.id!==bid);b.id=bid}cfg.blocks.push(b);cfg.blocks.sort((x,y)=>(x.desde||'')<(y.desde||'')?-1:1);saveCfg();$('bk').classList.remove('on');renderS();render()};
 $('go').textContent='Listo';$('txt').placeholder='Ej: Gustavo Pérez mañana a las 17 horas';
 let tm;$('txt').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(()=>{const v=$('txt').value.trim();const p=parse(v);if(p.nombre&&p.apellido&&p.fecha&&p.hora){review(v);$('txt').value=''}},1800)});
 render();

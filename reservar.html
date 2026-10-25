@@ -45,7 +45,7 @@ function draw(){
   $('gr').innerHTML=h}
 function sheet(m){const sl=days[sel]||[];step='t';
   $('sh').innerHTML=`<h2>${dt(sel)}</h2><p class="s">Agendar sesión · elegí un horario</p>${m?`<div class="er">${m}</div>`:''}<div class="ch">${sl.length?sl.map(h=>`<button data-h="${h}">${h}</button>`).join(''):'<span class="s">Ya no quedan horarios este día.</span>'}</div>`;$('ov').classList.add('on')}
-function form(){step='f';$('sh').innerHTML=`<h2>${dt(sel)}</h2><p class="s">Sesión a las ${hora}</p><input id="fn" placeholder="Nombre" autocomplete="given-name"><input id="fa" placeholder="Apellido" autocomplete="family-name"><input id="ft" placeholder="Teléfono (con característica, sin 0 ni 15)" inputmode="tel" autocomplete="tel"><label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--mute);margin:0 0 10px"><input type="checkbox" id="fw" style="width:auto;margin:3px 0 0"> Quiero recibir un recordatorio de mi sesión por WhatsApp</label><div class="er" id="er"></div><button class="pri" id="go">Agendar</button><button class="lk" id="bk">‹ Cambiar horario</button>`}
+function form(){step='f';$('sh').innerHTML=`<h2>${dt(sel)}</h2><p class="s">Sesión a las ${hora}</p><input id="fn" placeholder="Nombre" autocomplete="given-name"><input id="fa" placeholder="Apellido" autocomplete="family-name"><input id="ft" placeholder="Teléfono (con característica, sin 0 ni 15)" inputmode="tel" autocomplete="tel"><div class="er" id="er"></div><button class="pri" id="go">Agendar</button><button class="lk" id="bk">‹ Cambiar horario</button>`}
 const closeS=()=>{$('ov').classList.remove('on');step=null};
 $('ov').onclick=e=>{if(e.target===$('ov'))closeS()};
 $('gr').onclick=e=>{const b=e.target.closest('.d.on');if(b){sel=b.dataset.k;sheet()}};
@@ -58,7 +58,7 @@ $('sh').onclick=async e=>{
   const n=$('fn').value.trim(),a=$('fa').value.trim();if(n.length<2||a.length<2){$('er').textContent='Completá nombre y apellido.';return}
   if($('ft').value.replace(/\D/g,'').length<8){$('er').textContent='Ingresá un teléfono válido.';return}
   busy=true;$('go').disabled=true;
-  const r=await sb.rpc('public_book',{code:C,p_nombre:n,p_apellido:a,p_tel:$('ft').value.trim(),p_fecha:sel,p_hora:hora,p_dev:DEV,p_wa:$('fw').checked}),d=r.data||{};busy=false;
+  const r=await sb.rpc('public_book',{code:C,p_nombre:n,p_apellido:a,p_tel:$('ft').value.trim(),p_fecha:sel,p_hora:hora,p_dev:DEV}),d=r.data||{};busy=false;
   if(d.ok){step='ok';$('sh').innerHTML=`<div class="ok"><div style="font-size:42px">✓</div><h2>${d.estado==='pendiente'?'Solicitud enviada':'¡Turno agendado!'}</h2><p class="s">${d.estado==='pendiente'?'Tu turno queda pendiente de aprobación.':dt(sel)+' a las '+hora}</p><button class="pri" id="cl">Listo</button></div>`;load();return}
   const M={ocupado:'Ese horario se acaba de ocupar. Elegí otro.',limite:'Ya reservaste un turno con este link.',cerrado:'Las reservas no están disponibles por ahora.',tel:'Ingresá un teléfono válido.',datos:'Revisá nombre y apellido.'};
   await load();if(d.error==='ocupado'){hora=null;sheet(M.ocupado)}else{$('go').disabled=false;$('er').textContent=M[d.error]||'No se pudo agendar. Probá de nuevo.'}};
