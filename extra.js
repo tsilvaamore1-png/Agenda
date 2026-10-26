@@ -44,7 +44,9 @@ const cp=(b,i)=>$(b).onclick=async()=>{const x=$(i);try{await navigator.clipboar
 cp('bkCopy','bkLink');cp('bkOCopy','bkOLink');
 $('bkRot').onclick=()=>ask('Si cambi\u00e1s el link, el anterior deja de funcionar. \u00bfCambiarlo?',async()=>{await(window.rotateOnce&&window.rotateOnce());renderR()},'Cambiar');
 $('bkPend').onclick=e=>{const o=e.target.closest('[data-ok]'),n=e.target.closest('[data-no]');
-  if(o){const t=turnos.find(x=>x.id===o.dataset.ok);t.estado='confirmado';saveT(t);render();const tl=waNum(t.tel||'');if(tl)ask('\u00bfAvisarle por WhatsApp que su sesi\u00f3n qued\u00f3 confirmada?',()=>openWA(tl,fill(rm.tplOk,t)),'Abrir WhatsApp');else ask('Sesi\u00f3n confirmada. No pude avisarle por WhatsApp porque el tel\u00e9fono'+(t.tel?' ('+t.tel+') no es v\u00e1lido: tiene que incluir la caracter\u00edstica':' no est\u00e1 cargado')+'.',null,'Entendido')}
+  if(o){const t=turnos.find(x=>x.id===o.dataset.ok);t.estado='confirmado';saveT(t);render();renderR();const tl=waNum(t.tel||''),msg=fill(rm.tplOk,t);
+    if(tl){const and=/Android/i.test(navigator.userAgent);location.href=and?waBiz(tl,msg):waApp(tl,msg);setTimeout(()=>{if(!document.hidden)showWA({n:tl,nm:t.nombre,t:msg,ok:1})},1800)}
+    else showWA({n:'',nm:t.nombre,t:msg,ok:1})}
   if(n)delT(n.dataset.no)};
 
 /* fichas */
@@ -118,7 +120,7 @@ const openWA=(n,t)=>{location.href=waApp(n,t)};
 function showWA(o){
   const d=document.createElement('div'),B='width:100%;height:52px;border-radius:26px;border:0;font:inherit;font-weight:700;cursor:pointer;margin-bottom:10px',android=/Android/i.test(navigator.userAgent);
   d.style.cssText='position:fixed;inset:0;z-index:200;background:var(--bg);color:var(--fg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto';
-  d.innerHTML=`<div style="width:100%;max-width:380px"><h1 style="margin:0 0 6px;font-size:24px">${o.nm?'Recordale a '+esc(o.nm):'Enviar mensaje'}</h1><p style="color:var(--mute);margin:0 0 14px">Toc\u00e1 el bot\u00f3n: se abre WhatsApp con el mensaje escrito y solo ten\u00e9s que enviar.</p><div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:16px;white-space:pre-wrap">${esc(o.t||'')}</div><button id="wA" style="${B};background:var(--y);color:var(--yfg)">Abrir WhatsApp</button>${android?`<button id="wB" style="${B};background:var(--card);color:var(--fg)">Abrir WhatsApp Business</button>`:''}<button id="wX" style="${B};background:none;color:var(--mute)">Cerrar</button></div>`;
+  d.innerHTML=`<div style="width:100%;max-width:380px"><h1 style="margin:0 0 6px;font-size:24px">${o.ok?'Avisale a '+esc(o.nm):o.nm?'Recordale a '+esc(o.nm):'Enviar mensaje'}</h1><p style="color:var(--mute);margin:0 0 14px">Toc\u00e1 el bot\u00f3n: se abre WhatsApp con el mensaje escrito y solo ten\u00e9s que enviar.</p><div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:16px;white-space:pre-wrap">${esc(o.t||'')}</div><button id="wA" style="${B};background:var(--y);color:var(--yfg)">Abrir WhatsApp</button>${android?`<button id="wB" style="${B};background:var(--card);color:var(--fg)">Abrir WhatsApp Business</button>`:''}<button id="wX" style="${B};background:none;color:var(--mute)">Cerrar</button></div>`;
   document.body.appendChild(d);
   d.querySelector('#wA').onclick=()=>openWA(o.n,o.t);
   if(android)d.querySelector('#wB').onclick=()=>{location.href=waBiz(o.n,o.t)};

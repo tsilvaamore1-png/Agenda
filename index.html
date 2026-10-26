@@ -243,6 +243,7 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
       <div class="rv">
         <div class="r"><label>Nombre</label><input type="text" id="rn"></div>
         <div class="r"><label>Apellido</label><input type="text" id="ra"></div>
+        <div class="r"><label>Teléfono</label><input type="tel" id="rt" inputmode="tel" placeholder="11 2345 6789" autocomplete="off"></div>
         <div class="r"><label>Fecha</label><input type="date" id="rf"></div>
         <div class="r"><label>Hora</label><input type="time" id="rh" step="900"></div>
         <div class="r"><label>Primera sesión</label><button class="sw" id="rp" aria-label="Primera sesión"></button></div>
@@ -377,6 +378,8 @@ function timeWords(s){
     const out=pre+' '+h+(m!==null?':'+String(m).padStart(2,'0'):'')+(i<t.length?' '+t.slice(i).join(' '):'');
     return out.padEnd(all.length,' ')})}
 function parse(raw){
+  let tel='';
+  raw=raw.replace(/(?:\b(?:telefono|teléfono|tel|celular|cel|whatsapp|wsp|numero|número)\b\s*[:.]?\s*(?:es\s+(?:el\s+)?)?)?\+?\d[\d\s().-]{6,}\d/gi,m=>{const d=m.replace(/\D/g,'');if(d.length>=8&&!tel){tel=m.replace(/^[^\d+]*/,'').trim();return m.replace(/./g,' ')}return m});
   const s=timeWords(nz(raw));let cut=s.length,date=null,hh=null,mm=0,first=/primera/.test(s);
   const hit=(m)=>{if(m&&m.index<cut)cut=m.index};
   const addD=n=>{const d=new Date(today);d.setDate(d.getDate()+n);return d};
@@ -406,7 +409,7 @@ function parse(raw){
   const stop=['para','el','la','de','con','turno','sesion','agendar','agendame','agenda','anota','anotame','nuevo','a','un','una','agregar','pone','poneme'];
   const w=raw.slice(0,cut).split(/\s+/).filter(x=>x&&!stop.includes(nz(x).trim()));
   const sp=splitName(w),cp=x=>x.split(/\s+/).filter(Boolean).map(y=>cap(y.toLowerCase())).join(' ');
-  return{nombre:cp(sp[0]),apellido:cp(sp[1]),
+  return{nombre:cp(sp[0]),apellido:cp(sp[1]),tel:tel,
     fecha:date?key(date):'',hora:hh!==null?String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0'):'',primera:first,rec:repeat,sem:sem};
 }
 
@@ -427,10 +430,11 @@ function closeSheet(){if(rec&&live)try{rec.stop()}catch(e){}$('ov').classList.re
 function review(text){
   const p=parse(text);
   $('heard').textContent='Escuché: “'+text+'”';
-  $('rn').value=p.nombre;$('ra').value=p.apellido;$('rf').value=p.fecha;$('rh').value=p.hora;
+  $('rn').value=p.nombre;$('ra').value=p.apellido;$('rt').value=p.tel||'';$('rf').value=p.fecha;$('rh').value=p.hora;
   $('rp').classList.toggle('on',p.primera);$('rr').classList.toggle('on',p.rec);$('rw').value=p.sem;$('rwr').style.display=p.rec?'':'none';$('err').textContent='';mark();view('R')}
-function mark(){['rn','ra','rf','rh'].forEach(i=>$(i).classList.toggle('miss',!$(i).value.trim()))}
-['rn','ra','rf','rh'].forEach(i=>$(i).addEventListener('input',mark));
+function mark(){['rn','ra','rf','rh'].forEach(i=>$(i).classList.toggle('miss',!$(i).value.trim()));$('rt').classList.toggle('miss',!telOk($('rt').value))}
+const telOk=v=>String(v||'').replace(/\D/g,'').length>=10;
+['rn','ra','rt','rf','rh'].forEach(i=>$(i).addEventListener('input',mark));
 $('rp').onclick=()=>$('rp').classList.toggle('on');
 $('mic').onclick=()=>{
   if(!SR){fallback();return}
@@ -450,15 +454,15 @@ $('mI').onclick=()=>setMode(false);$('mM').onclick=()=>setMode(true);
 $('desc').onclick=()=>ask('¿Estás seguro que querés descartar este turno?',()=>{if(multi)view('D');else{resetSheet();closeSheet()}});
 $('dall').onclick=()=>ask('¿Estás seguro que querés descartar estos turnos?',()=>{resetSheet();closeSheet()});
 function read(){
-  const t={id:uid++,nombre:$('rn').value.trim(),apellido:$('ra').value.trim(),fecha:$('rf').value,hora:$('rh').value,primera:$('rp').classList.contains('on')};
-  if(!t.nombre||!t.apellido||!t.fecha||!t.hora){mark();$('err').textContent='Faltan datos: completá lo resaltado.';return null}
+  const t={id:uid++,nombre:$('rn').value.trim(),apellido:$('ra').value.trim(),tel:$('rt').value.trim(),fecha:$('rf').value,hora:$('rh').value,primera:$('rp').classList.contains('on')};
+  if(!t.nombre||!t.apellido||!telOk(t.tel)||!t.fecha||!t.hora){mark();$('err').textContent='Faltan datos: completá lo resaltado.';return null}
   if([...turnos,...pend].some(o=>o.fecha===t.fecha&&Math.abs(mins(o.hora)-mins(t.hora))<90)){$('err').textContent='Choca con otro turno (60 min + 30 min de margen).';return null}
   return t}
 function finish(list){list.forEach(t=>{t.by=me?me.id:'';saveT(t)});sel=list[0].fecha;const d=fmt(sel);vy=d.getFullYear();vm=d.getMonth();resetSheet();closeSheet();render()}
 function addDays(k,n){const d=fmt(k);d.setDate(d.getDate()+n);return key(d)}
 function build(){
-  const b={nombre:$('rn').value.trim(),apellido:$('ra').value.trim(),fecha:$('rf').value,hora:$('rh').value,primera:$('rp').classList.contains('on')};
-  if(!b.nombre||!b.apellido||!b.fecha||!b.hora){mark();$('err').textContent='Faltan datos: completá lo resaltado.';return null}
+  const b={nombre:$('rn').value.trim(),apellido:$('ra').value.trim(),tel:$('rt').value.trim(),fecha:$('rf').value,hora:$('rh').value,primera:$('rp').classList.contains('on')};
+  if(!b.nombre||!b.apellido||!telOk(b.tel)||!b.fecha||!b.hora){mark();$('err').textContent=$('rt').value.trim()&&!telOk(b.tel)?'El teléfono tiene que incluir la característica (ej. 11 2345 6789).':'Faltan datos: completá lo resaltado.';return null}
   const n=$('rr').classList.contains('on')?Math.min(104,Math.max(2,+$('rw').value||12)):1;
   return Array.from({length:n},(_,i)=>({...b,id:gid(),fecha:addDays(b.fecha,7*i)}))}
 function place(list){if(multi){pend.push(...list);drawPre();view('D')}else finish(list)}
@@ -625,7 +629,7 @@ function aMove(raw,s){
   t.fecha='0000-00-00';const c=confl({fecha:nd,hora:nh},[]);t.fecha=old;
   if(c){say('No se puede pasar al '+lab({fecha:nd,hora:nh})+': '+c+'.');return}
   ask('¿Pasar la sesión de '+t.nombre+' '+t.apellido+' del '+lab(t)+' al '+lab({fecha:nd,hora:nh})+'?',()=>{t.fecha=nd;t.hora=nh;t.editedBy=me?me.id:'';saveT(t);render();say('Listo: la sesión de '+esc(t.nombre+' '+t.apellido)+' quedó el '+lab(t)+'.')},'Pasar')}
-function prefill(f,h){openSheet();$('heard').textContent='Horario elegido: '+lab({fecha:f,hora:h});$('rn').value='';$('ra').value='';$('rf').value=f;$('rh').value=h;$('rp').classList.remove('on');$('rr').classList.remove('on');$('rwr').style.display='none';$('err').textContent='';mark();view('R')}
+function prefill(f,h){openSheet();$('heard').textContent='Horario elegido: '+lab({fecha:f,hora:h});$('rn').value='';$('ra').value='';$('rt').value='';$('rf').value=f;$('rh').value=h;$('rp').classList.remove('on');$('rr').classList.remove('on');$('rwr').style.display='none';$('err').textContent='';mark();view('R')}
 $('ares').onclick=e=>{
   const b=e.target.closest('.slot');if(!b)return;
   if(b.dataset.q){const v=b.dataset.q;$('aq').value=v;$('aq').focus();const i=v.indexOf('...');if(i>=0)$('aq').setSelectionRange(i,i+3);return}
