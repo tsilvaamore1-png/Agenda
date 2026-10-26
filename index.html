@@ -76,9 +76,9 @@ input:focus{border-color:var(--y)}
 .r label{color:var(--mute);font-size:13px;width:80px}
 .r input[type=text],.r input[type=tel],.r input[type=date],.r input[type=time]{flex:1;min-width:0;text-align:right;background:none;border:0;outline:none;font-size:17px;font-weight:600;padding:6px 8px;border-radius:8px}
 .r input.miss{outline:2px solid var(--y)}
-#vR .r input[type=date],#vR .r input[type=time]{display:flex;justify-content:flex-end;text-align:right;-webkit-appearance:none;appearance:none}
-#vR .r input::-webkit-datetime-edit{flex:none;text-align:right;padding:0}
-#vR .r input::-webkit-date-and-time-value{text-align:right;margin:0}
+#ed .r input[type=date],#ed .r input[type=time],#vR .r input[type=date],#vR .r input[type=time]{display:flex;justify-content:flex-end;text-align:right;-webkit-appearance:none;appearance:none}
+#ed .r input::-webkit-datetime-edit,#vR .r input::-webkit-datetime-edit{flex:none;text-align:right;padding:0}
+#ed .r input::-webkit-date-and-time-value,#vR .r input::-webkit-date-and-time-value{text-align:right;margin:0}
 .sw{width:48px;height:28px;border-radius:14px;border:0;background:var(--line);position:relative;cursor:pointer}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--bg);transition:.15s}
 .sw.on{background:var(--y)}.sw.on::after{left:23px}
@@ -269,6 +269,7 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
   <div class="rv">
     <div class="r"><label>Nombre</label><input type="text" id="en"></div>
     <div class="r"><label>Apellido</label><input type="text" id="ea"></div>
+    <div class="r"><label>Teléfono</label><input type="tel" id="et" inputmode="tel" placeholder="11 2345-6789" autocomplete="off"></div>
     <div class="r"><label>Fecha</label><input type="date" id="ef"></div>
     <div class="r"><label>Hora</label><input type="time" id="eh" step="900"></div>
     <div class="r"><label>Primera sesión</label><button class="sw" id="ep" aria-label="Primera sesión"></button></div>
@@ -380,23 +381,51 @@ function timeWords(s){
     else if(isW(UW,t[i])&&(k||UW[t[i]]>=10)){m=UW[t[i]];i++}
     const out=pre+' '+h+(m!==null?':'+String(m).padStart(2,'0'):'')+(i<t.length?' '+t.slice(i).join(' '):'');
     return out.padEnd(all.length,' ')})}
+const NW={cero:'0',un:'1',una:'1',uno:'1',dos:'2',tres:'3',cuatro:'4',cinco:'5',seis:'6',siete:'7',ocho:'8',nueve:'9',diez:'10',once:'11',doce:'12',trece:'13',catorce:'14',quince:'15',dieciseis:'16',diecisiete:'17',dieciocho:'18',diecinueve:'19',veinte:'20',veintiun:'21',veintiuno:'21',veintiuna:'21',veintidos:'22',veintitres:'23',veinticuatro:'24',veinticinco:'25',veintiseis:'26',veintisiete:'27',veintiocho:'28',veintinueve:'29',treinta:'30',cuarenta:'40',cincuenta:'50',sesenta:'60',setenta:'70',ochenta:'80',noventa:'90'},NT=new Set(['treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa']);
+function fmtTel(d){d=String(d).replace(/\D/g,'').replace(/^0+/,'');
+  if(d.startsWith('549')&&d.length>=12)d=d.slice(3);else if(d.startsWith('54')&&d.length>=11)d=d.slice(2);
+  if(d.length===12&&d.startsWith('1115'))d='11'+d.slice(4);
+  if(d.length===10)return d.startsWith('11')?d.slice(0,2)+' '+d.slice(2,6)+'-'+d.slice(6):d.slice(0,3)+' '+d.slice(3,6)+'-'+d.slice(6);
+  return d}
+function extractTel(raw){
+  const tk=[];raw.replace(/\S+/g,(m,i)=>{tk.push({t:nz(m).trim().replace(/^[.,;:()¿¡"]+|[.,;:()?!"]+$/g,''),i:i,e:i+m.length});return m});
+  let runs=[],cur=[];
+  for(let i=0;i<tk.length;i++){const t=tk[i].t;let it=null;
+    if(/^\+?[\d().\-]+$/.test(t)&&/\d/.test(t))it={a:i,b:i,d:t.replace(/\D/g,'')};
+    else if(NT.has(t)&&tk[i+1]&&tk[i+1].t==='y'&&tk[i+2]&&NW[tk[i+2].t]&&NW[tk[i+2].t].length===1&&NW[tk[i+2].t]!=='0'){it={a:i,b:i+2,d:String(+NW[t]+ +NW[tk[i+2].t])};i+=2}
+    else if(Object.prototype.hasOwnProperty.call(NW,t))it={a:i,b:i,d:NW[t]};
+    if(it)cur.push(it);else{if(cur.length)runs.push(cur);cur=[]}}
+  if(cur.length)runs.push(cur);
+  const sum=a=>a.reduce((n,x)=>n+x.d.length,0);
+  for(const r of runs){
+    if(sum(r)<8)continue;let it=r;
+    if(sum(r)>10){let ok=null;
+      for(let k=1;k<r.length&&!ok;k++)if(sum(r.slice(k))===10)ok=r.slice(k);
+      for(let k=r.length-1;k>0&&!ok;k--)if(sum(r.slice(0,k))===10)ok=r.slice(0,k);
+      if(ok)it=ok}
+    let a=it[0].a;const b=it[it.length-1].b,KEY=['telefono','tel','celular','cel','whatsapp','wsp','numero'],FIL=KEY.concat(['es','el','de','mi','su','con']);
+    let j=a-1,kk=-1;while(j>=0&&FIL.includes(tk[j].t)){if(KEY.includes(tk[j].t))kk=j;j--}
+    if(kk>=0)a=kk;
+    const st=tk[a].i,en=tk[b].e;
+    return{raw:raw.slice(0,st)+' '.repeat(en-st)+raw.slice(en),tel:fmtTel(it.map(x=>x.d).join(''))}}
+  return{raw:raw,tel:''}}
 function parse(raw){
   let tel='';
-  raw=raw.replace(/(?:\b(?:telefono|teléfono|tel|celular|cel|whatsapp|wsp|numero|número)\b\s*[:.]?\s*(?:es\s+(?:el\s+)?)?)?\+?\d[\d\s().-]{6,}\d/gi,m=>{const d=m.replace(/\D/g,'');if(d.length>=8&&!tel){tel=m.replace(/^[^\d+]*/,'').trim();return m.replace(/./g,' ')}return m});
+  {const ex=extractTel(raw);raw=ex.raw;tel=ex.tel}
   const s=timeWords(nz(raw));let cut=s.length,date=null,hh=null,mm=0,first=/primera/.test(s);
-  const hit=(m)=>{if(m&&m.index<cut)cut=m.index};
+  const hit=(m)=>{if(m&&m.index<cut)cut=m.index};let dsp=null;const hitD=m=>{dsp=[m.index,m.index+m[0].length];hit(m)};
   const addD=n=>{const d=new Date(today);d.setDate(d.getDate()+n);return d};
   let m;
-  if(m=s.match(/pasado manana/)){date=addD(2);hit(m)}
-  else if(m=s.match(/manana/)){date=addD(1);hit(m)}
-  else if(m=s.match(/\bhoy\b/)){date=addD(0);hit(m)}
+  if(m=s.match(/pasado manana/)){date=addD(2);hitD(m)}
+  else if(m=s.match(/manana/)){date=addD(1);hitD(m)}
+  else if(m=s.match(/\bhoy\b/)){date=addD(0);hitD(m)}
   else if(m=s.match(/(\d{1,2}) de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)/)){
     const mi=MES.indexOf(m[2]==='setiembre'?'septiembre':m[2]);date=new Date(today.getFullYear(),mi,+m[1]);
-    if(date<new Date(today.getFullYear(),today.getMonth(),today.getDate()))date.setFullYear(date.getFullYear()+1);hit(m)}
-  else if(m=s.match(/(\d{1,2})\/(\d{1,2})/)){date=new Date(today.getFullYear(),+m[2]-1,+m[1]);hit(m)}
-  else if(m=s.match(new RegExp('\\b('+DIA.join('|')+')\\b'))){const i=DIA.indexOf(m[1]);date=addD((i-today.getDay()+7)%7||7);hit(m)}
+    if(date<new Date(today.getFullYear(),today.getMonth(),today.getDate()))date.setFullYear(date.getFullYear()+1);hitD(m)}
+  else if(m=s.match(/(\d{1,2})\/(\d{1,2})/)){date=new Date(today.getFullYear(),+m[2]-1,+m[1]);hitD(m)}
+  else if(m=s.match(new RegExp('\\b('+DIA.join('|')+')\\b'))){const i=DIA.indexOf(m[1]);date=addD((i-today.getDay()+7)%7||7);hitD(m)}
   else if(m=s.match(/\bel (\d{1,2})\b/)){date=new Date(today.getFullYear(),today.getMonth(),+m[1]);
-    if(date<new Date(today.getFullYear(),today.getMonth(),today.getDate()))date.setMonth(date.getMonth()+1);hit(m)}
+    if(date<new Date(today.getFullYear(),today.getMonth(),today.getDate()))date.setMonth(date.getMonth()+1);hitD(m)}
   if(m=s.match(/(?:a las|a la|las)\s*(\d{1,2})(\d{2})\b(?!\s*(?:de\b|\/))/)){hh=+m[1];mm=+m[2];if(!/\d/.test(s.slice(m.index+m[0].length,m.index+m[0].length+1))&&hh>=1&&hh<8)hh+=12;hit(m)}
   else if(m=s.match(/(?:a las|a la|las)\s*(\d{1,2})(?:\s*[:.]\s*(\d{2})\b|\s*(?:h|hs|horas)\s*(\d{2})\b|\s+y\s+(media|cuarto|\d{1,2})\b|\s+(\d{2})\b(?!\s*(?:de\b|\/)))?(?:\s*(?:hs|horas|h)\b)?(?:\s*de la (manana|tarde|noche))?/)){
     hh=+m[1];const y=m[4];mm=m[2]?+m[2]:m[3]?+m[3]:y==='media'?30:y==='cuarto'?15:y?+y:m[5]?+m[5]:0;
@@ -404,6 +433,9 @@ function parse(raw){
   else if(m=s.match(/(\d{1,2})(?::(\d{2}))?\s*(?:hs|horas|hora|h)\b(?:\s*y\s*(media|cuarto|\d{2}))?(?:\s*de la (manana|tarde|noche))?/)){hh=+m[1];mm=m[2]?+m[2]:(m[3]==='media'?30:m[3]==='cuarto'?15:m[3]?+m[3]:0);if((m[4]==='tarde'||m[4]==='noche')&&hh<12)hh+=12;else if(!m[4]&&hh>=1&&hh<8)hh+=12;hit(m)}
   else if(m=s.match(/(\d{1,2}):(\d{2})/)){hh=+m[1];mm=+m[2];hit(m)}
   if(hh!==null&&(hh>23||mm>59)){hh=null;mm=0}
+  if(hh===null){let s2=s;if(dsp)s2=s.slice(0,dsp[0])+' '.repeat(dsp[1]-dsp[0])+s.slice(dsp[1]);
+    const q=s2.match(/\b(\d{1,2})(?:\s+y\s+|\s+|:|\.)(\d{2})\b(?!\s*(?:de\b|\/))/);
+    if(q&&+q[1]<=23&&+q[2]<=59){hh=+q[1];mm=+q[2];if(hh>=1&&hh<8)hh+=12;hit(q)}}
   let repeat=false,sem=12;
   if(m=s.match(/\b(?:todos los|todas las|cada)\b/)){repeat=true;hit(m)}
   if(m=s.match(/semanal/)){repeat=true;hit(m)}
@@ -438,6 +470,7 @@ function review(text){
 function mark(){['rn','ra','rf','rh'].forEach(i=>$(i).classList.toggle('miss',!$(i).value.trim()));$('rt').classList.toggle('miss',!telOk($('rt').value))}
 const telOk=v=>String(v||'').replace(/\D/g,'').length>=10;
 ['rn','ra','rt','rf','rh'].forEach(i=>$(i).addEventListener('input',mark));
+$('rt').addEventListener('change',()=>{$('rt').value=fmtTel($('rt').value);mark()});
 $('rp').onclick=()=>$('rp').classList.toggle('on');
 $('mic').onclick=()=>{
   if(!SR){fallback();return}
@@ -457,14 +490,14 @@ $('mI').onclick=()=>setMode(false);$('mM').onclick=()=>setMode(true);
 $('desc').onclick=()=>ask('¿Estás seguro que querés descartar este turno?',()=>{if(multi)view('D');else{resetSheet();closeSheet()}});
 $('dall').onclick=()=>ask('¿Estás seguro que querés descartar estos turnos?',()=>{resetSheet();closeSheet()});
 function read(){
-  const t={id:uid++,nombre:$('rn').value.trim(),apellido:$('ra').value.trim(),tel:$('rt').value.trim(),fecha:$('rf').value,hora:$('rh').value,primera:$('rp').classList.contains('on')};
+  const t={id:uid++,nombre:$('rn').value.trim(),apellido:$('ra').value.trim(),tel:fmtTel($('rt').value),fecha:$('rf').value,hora:$('rh').value,primera:$('rp').classList.contains('on')};
   if(!t.nombre||!t.apellido||!telOk(t.tel)||!t.fecha||!t.hora){mark();$('err').textContent='Faltan datos: completá lo resaltado.';return null}
   if([...turnos,...pend].some(o=>o.fecha===t.fecha&&Math.abs(mins(o.hora)-mins(t.hora))<90)){$('err').textContent='Choca con otro turno (60 min + 30 min de margen).';return null}
   return t}
 function finish(list){list.forEach(t=>{t.by=me?me.id:'';saveT(t)});sel=list[0].fecha;const d=fmt(sel);vy=d.getFullYear();vm=d.getMonth();resetSheet();closeSheet();render()}
 function addDays(k,n){const d=fmt(k);d.setDate(d.getDate()+n);return key(d)}
 function build(){
-  const b={nombre:$('rn').value.trim(),apellido:$('ra').value.trim(),tel:$('rt').value.trim(),fecha:$('rf').value,hora:$('rh').value,primera:$('rp').classList.contains('on')};
+  const b={nombre:$('rn').value.trim(),apellido:$('ra').value.trim(),tel:fmtTel($('rt').value),fecha:$('rf').value,hora:$('rh').value,primera:$('rp').classList.contains('on')};
   if(!b.nombre||!b.apellido||!telOk(b.tel)||!b.fecha||!b.hora){mark();$('err').textContent=$('rt').value.trim()&&!telOk(b.tel)?'El teléfono tiene que incluir la característica (ej. 11 2345 6789).':'Faltan datos: completá lo resaltado.';return null}
   const n=$('rr').classList.contains('on')?Math.min(104,Math.max(2,+$('rw').value||12)):1;
   return Array.from({length:n},(_,i)=>({...b,id:gid(),fecha:addDays(b.fecha,7*i)}))}
@@ -497,15 +530,17 @@ $('lista').onclick=e=>{
   openId=openId===id?null:id;render()};
 
 let eid=null;
-function openEdit(id){const t=turnos.find(x=>x.id===id);eid=id;$('en').value=t.nombre;$('ea').value=t.apellido;$('ef').value=t.fecha;$('eh').value=t.hora;$('ep').classList.toggle('on',!!t.primera);$('eerr').textContent='';$('ed').classList.add('on')}
+function openEdit(id){const t=turnos.find(x=>x.id===id);eid=id;$('en').value=t.nombre;$('ea').value=t.apellido;$('et').value=t.tel?fmtTel(t.tel):'';$('et').classList.remove('miss');$('ef').value=t.fecha;$('eh').value=t.hora;$('ep').classList.toggle('on',!!t.primera);$('eerr').textContent='';$('ed').classList.add('on')}
 $('ep').onclick=()=>$('ep').classList.toggle('on');
+$('et').addEventListener('change',()=>{$('et').value=fmtTel($('et').value)});
 $('ecan').onclick=()=>$('ed').classList.remove('on');
 $('ed').onclick=e=>{if(e.target===$('ed'))$('ed').classList.remove('on')};
 $('esave').onclick=()=>{
-  const t=turnos.find(x=>x.id===eid),n=$('en').value.trim(),a=$('ea').value.trim(),f=$('ef').value,h=$('eh').value;
-  if(!n||!a||!f||!h){$('eerr').textContent='Completá todos los datos.';return}
+  const t=turnos.find(x=>x.id===eid),n=$('en').value.trim(),a=$('ea').value.trim(),f=$('ef').value,h=$('eh').value,tl=fmtTel($('et').value);
+  $('et').classList.toggle('miss',!telOk(tl));
+  if(!n||!a||!f||!h||!telOk(tl)){$('eerr').textContent=!telOk(tl)&&$('et').value.trim()?'El teléfono tiene que incluir la característica (ej. 11 2345-6789).':'Completá todos los datos (incluido el teléfono).';return}
   if(turnos.some(o=>o.id!==eid&&o.fecha===f&&Math.abs(mins(o.hora)-mins(h))<90)){$('eerr').textContent='Choca con otro turno (60 min + 30 min de margen).';return}
-  Object.assign(t,{nombre:n,apellido:a,fecha:f,hora:h,primera:$('ep').classList.contains('on')});t.editedBy=me?me.id:'';saveT(t);
+  Object.assign(t,{nombre:n,apellido:a,tel:tl,fecha:f,hora:h,primera:$('ep').classList.contains('on')});t.editedBy=me?me.id:'';saveT(t);
   sel=f;const d=fmt(f);vy=d.getFullYear();vm=d.getMonth();$('ed').classList.remove('on');render()};
 
 let nid=null;
