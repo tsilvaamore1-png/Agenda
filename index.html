@@ -364,8 +364,20 @@ function splitName(w){
   for(const t of turnos){if(nz((t.nombre+' '+t.apellido).trim()).replace(/\s+/g,' ')===full)return[t.nombre,t.apellido]}
   let k=1;if(w.length===3)k=GN.has(nz(w[1]))?2:1;else if(w.length>=4)k=2;
   return[w.slice(0,k).join(' '),w.slice(k).join(' ')]}
+const UW={cero:0,un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,dieciseis:16,diecisiete:17,dieciocho:18,diecinueve:19,veinte:20,veintiun:21,veintiuno:21,veintiuna:21,veintidos:22,veintitres:23},TW={treinta:30,cuarenta:40,cincuenta:50};
+const isW=(o,k)=>k!==undefined&&Object.prototype.hasOwnProperty.call(o,k);
+function timeWords(s){
+  return s.replace(/\b(a las|a la|las|la)\s+([a-z]+(?:\s+(?:y\s+|con\s+)?[a-z]+){0,5})/g,(all,pre,rest)=>{
+    const t=rest.split(/\s+/);if(!isW(UW,t[0]))return all;
+    const h=UW[t[0]];let i=1,m=null;
+    const k=(t[i]==='y'||t[i]==='con')&&(isW(UW,t[i+1])||isW(TW,t[i+1]));
+    if(k)i++;
+    if(isW(TW,t[i])){m=TW[t[i]];i++;if(t[i]==='y'&&isW(UW,t[i+1])&&UW[t[i+1]]<10){m+=UW[t[i+1]];i+=2}}
+    else if(isW(UW,t[i])&&(k||UW[t[i]]>=10)){m=UW[t[i]];i++}
+    const out=pre+' '+h+(m!==null?':'+String(m).padStart(2,'0'):'')+(i<t.length?' '+t.slice(i).join(' '):'');
+    return out.padEnd(all.length,' ')})}
 function parse(raw){
-  const s=nz(raw);let cut=s.length,date=null,hh=null,mm=0,first=/primera/.test(s);
+  const s=timeWords(nz(raw));let cut=s.length,date=null,hh=null,mm=0,first=/primera/.test(s);
   const hit=(m)=>{if(m&&m.index<cut)cut=m.index};
   const addD=n=>{const d=new Date(today);d.setDate(d.getDate()+n);return d};
   let m;
@@ -379,11 +391,13 @@ function parse(raw){
   else if(m=s.match(new RegExp('\\b('+DIA.join('|')+')\\b'))){const i=DIA.indexOf(m[1]);date=addD((i-today.getDay()+7)%7||7);hit(m)}
   else if(m=s.match(/\bel (\d{1,2})\b/)){date=new Date(today.getFullYear(),today.getMonth(),+m[1]);
     if(date<new Date(today.getFullYear(),today.getMonth(),today.getDate()))date.setMonth(date.getMonth()+1);hit(m)}
-  if(m=s.match(/(?:a las|a la|las)\s*(\d{1,2})(?::(\d{2}))?(?:\s*y\s*(media|cuarto|\d{2}))?(?:\s*(?:hs|horas|h)\b)?(?:\s*de la (manana|tarde|noche))?/)){
-    hh=+m[1];mm=m[2]?+m[2]:(m[3]==='media'?30:m[3]==='cuarto'?15:m[3]?+m[3]:0);
-    if((m[4]==='tarde'||m[4]==='noche')&&hh<12)hh+=12;else if(!m[4]&&hh>=1&&hh<8)hh+=12;hit(m)}
+  if(m=s.match(/(?:a las|a la|las)\s*(\d{1,2})(\d{2})\b(?!\s*(?:de\b|\/))/)){hh=+m[1];mm=+m[2];if(!/\d/.test(s.slice(m.index+m[0].length,m.index+m[0].length+1))&&hh>=1&&hh<8)hh+=12;hit(m)}
+  else if(m=s.match(/(?:a las|a la|las)\s*(\d{1,2})(?:\s*[:.]\s*(\d{2})\b|\s*(?:h|hs|horas)\s*(\d{2})\b|\s+y\s+(media|cuarto|\d{1,2})\b|\s+(\d{2})\b(?!\s*(?:de\b|\/)))?(?:\s*(?:hs|horas|h)\b)?(?:\s*de la (manana|tarde|noche))?/)){
+    hh=+m[1];const y=m[4];mm=m[2]?+m[2]:m[3]?+m[3]:y==='media'?30:y==='cuarto'?15:y?+y:m[5]?+m[5]:0;
+    if((m[6]==='tarde'||m[6]==='noche')&&hh<12)hh+=12;else if(!m[6]&&hh>=1&&hh<8)hh+=12;hit(m)}
   else if(m=s.match(/(\d{1,2})(?::(\d{2}))?\s*(?:hs|horas|hora|h)\b(?:\s*y\s*(media|cuarto|\d{2}))?(?:\s*de la (manana|tarde|noche))?/)){hh=+m[1];mm=m[2]?+m[2]:(m[3]==='media'?30:m[3]==='cuarto'?15:m[3]?+m[3]:0);if((m[4]==='tarde'||m[4]==='noche')&&hh<12)hh+=12;else if(!m[4]&&hh>=1&&hh<8)hh+=12;hit(m)}
   else if(m=s.match(/(\d{1,2}):(\d{2})/)){hh=+m[1];mm=+m[2];hit(m)}
+  if(hh!==null&&(hh>23||mm>59)){hh=null;mm=0}
   let repeat=false,sem=12;
   if(m=s.match(/\b(?:todos los|todas las|cada)\b/)){repeat=true;hit(m)}
   if(m=s.match(/semanal/)){repeat=true;hit(m)}

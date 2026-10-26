@@ -44,7 +44,7 @@ const cp=(b,i)=>$(b).onclick=async()=>{const x=$(i);try{await navigator.clipboar
 cp('bkCopy','bkLink');cp('bkOCopy','bkOLink');
 $('bkRot').onclick=()=>ask('Si cambi\u00e1s el link, el anterior deja de funcionar. \u00bfCambiarlo?',async()=>{await(window.rotateOnce&&window.rotateOnce());renderR()},'Cambiar');
 $('bkPend').onclick=e=>{const o=e.target.closest('[data-ok]'),n=e.target.closest('[data-no]');
-  if(o){const t=turnos.find(x=>x.id===o.dataset.ok);t.estado='confirmado';saveT(t);render();const tl=waNum(t.tel||'');if(tl)ask('\u00bfAvisarle por WhatsApp que su sesi\u00f3n qued\u00f3 confirmada?',()=>window.open(waLink(tl,fill(rm.tplOk,t)),'_blank'),'Abrir WhatsApp');else ask('Sesi\u00f3n confirmada. No pude avisarle por WhatsApp porque el tel\u00e9fono'+(t.tel?' ('+t.tel+') no es v\u00e1lido: tiene que incluir la caracter\u00edstica':' no est\u00e1 cargado')+'.',null,'Entendido')}
+  if(o){const t=turnos.find(x=>x.id===o.dataset.ok);t.estado='confirmado';saveT(t);render();const tl=waNum(t.tel||'');if(tl)ask('\u00bfAvisarle por WhatsApp que su sesi\u00f3n qued\u00f3 confirmada?',()=>openWA(tl,fill(rm.tplOk,t)),'Abrir WhatsApp');else ask('Sesi\u00f3n confirmada. No pude avisarle por WhatsApp porque el tel\u00e9fono'+(t.tel?' ('+t.tel+') no es v\u00e1lido: tiene que incluir la caracter\u00edstica':' no est\u00e1 cargado')+'.',null,'Entendido')}
   if(n)delT(n.dataset.no)};
 
 /* fichas */
@@ -112,6 +112,18 @@ const TPL='Hola {nombre}, te recuerdo tu sesi\u00f3n del {fecha} a las {hora}. \
 let rm={push:[60],wa:[1440],tpl:TPL,tplOk:TPLOK},rmNote='';
 const waNum=p=>{let d=String(p||'').replace(/\D/g,'').replace(/^00/,'');if(d.startsWith('54')){if(!d.startsWith('549'))d='549'+d.slice(2)}else d='549'+d.replace(/^0/,'');return d.length>=12?d:''};
 const waLink=(n,t)=>'https://wa.me/'+n+'?text='+encodeURIComponent(t);
+const waApp=(n,t)=>'whatsapp://send?'+(n?'phone='+n+'&':'')+'text='+encodeURIComponent(t);
+const waBiz=(n,t)=>'intent://send/?'+(n?'phone='+n+'&':'')+'text='+encodeURIComponent(t)+'#Intent;scheme=whatsapp;package=com.whatsapp.w4b;end';
+const openWA=(n,t)=>{location.href=waApp(n,t)};
+function showWA(o){
+  const d=document.createElement('div'),B='width:100%;height:52px;border-radius:26px;border:0;font:inherit;font-weight:700;cursor:pointer;margin-bottom:10px',android=/Android/i.test(navigator.userAgent);
+  d.style.cssText='position:fixed;inset:0;z-index:200;background:var(--bg);color:var(--fg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto';
+  d.innerHTML=`<div style="width:100%;max-width:380px"><h1 style="margin:0 0 6px;font-size:24px">${o.nm?'Recordale a '+esc(o.nm):'Enviar mensaje'}</h1><p style="color:var(--mute);margin:0 0 14px">Toc\u00e1 el bot\u00f3n: se abre WhatsApp con el mensaje escrito y solo ten\u00e9s que enviar.</p><div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:16px;white-space:pre-wrap">${esc(o.t||'')}</div><button id="wA" style="${B};background:var(--y);color:var(--yfg)">Abrir WhatsApp</button>${android?`<button id="wB" style="${B};background:var(--card);color:var(--fg)">Abrir WhatsApp Business</button>`:''}<button id="wX" style="${B};background:none;color:var(--mute)">Cerrar</button></div>`;
+  document.body.appendChild(d);
+  d.querySelector('#wA').onclick=()=>openWA(o.n,o.t);
+  if(android)d.querySelector('#wB').onclick=()=>{location.href=waBiz(o.n,o.t)};
+  d.querySelector('#wX').onclick=()=>d.remove()}
+{const q=new URLSearchParams(location.search).get('wa');if(q){let o=null;try{o=JSON.parse(q)}catch(err){}if(o&&o.t){history.replaceState({},'',location.pathname);const go=()=>showWA(o);document.body?go():addEventListener('DOMContentLoaded',go)}}}
 const fill=(s,t)=>(s||TPLOK).replace(/\{nombre\}/g,t.nombre).replace(/\{fecha\}/g,fmt(t.fecha).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})).replace(/\{hora\}/g,t.hora);
 const mlab=m=>m%1440===0?(m/1440)+(m===1440?' d\u00eda':' d\u00edas'):m%60===0?(m/60)+(m===60?' hora':' horas'):m+' min';
 const saveRm=()=>{if(db)db.doc('config/remind').set(rm)};
@@ -134,7 +146,7 @@ $('rmBody').onclick=async e=>{
     if(!(n>=1)||n>60*1440){note('Pon\u00e9 una cantidad v\u00e1lida (hasta 60 d\u00edas).');return}
     if(!(rm[f]||[]).includes(n))rm[f]=[...(rm[f]||[]),n].sort((x,y)=>x-y);note('');saveRm();renderRm();return}
   const b=e.target.closest('button');if(!b)return;
-  if(b.id==='rmTest'){try{const{reg}=await regP();if(Notification.permission!=='granted'&&await Notification.requestPermission()!=='granted'){note('Permiso de notificaciones denegado.');return}await reg.showNotification('Recordale a Gustavo P\u00e9rez',{body:'Sesi\u00f3n del jueves a las 15:00. Toc\u00e1 para abrir WhatsApp.',data:{url:waLink('5491112345678',fill(rm.tpl||TPL,{nombre:'Gustavo',fecha:key(new Date()),hora:'15:00'}))},actions:[{action:'wa',title:'Enviar WhatsApp'}]})}catch(err){note('Este navegador no permite avisos.')}return}
+  if(b.id==='rmTest'){try{const{reg}=await regP();if(Notification.permission!=='granted'&&await Notification.requestPermission()!=='granted'){note('Permiso de notificaciones denegado.');return}await reg.showNotification('Recordale a Gustavo P\u00e9rez',{body:'Sesi\u00f3n del jueves a las 15:00. Toc\u00e1 para abrir WhatsApp.',data:{wa:{n:'',nm:'Gustavo P\u00e9rez',t:fill(rm.tpl||TPL,{nombre:'Gustavo',fecha:key(new Date()),hora:'15:00'})}},actions:[{action:'wa',title:'Abrir mensaje'}]})}catch(err){note('Este navegador no permite avisos.')}return}
   if(b.id==='rmPush'){
     if(!('PushManager' in window)||!(await regP()).reg){note('Este navegador no permite avisos. En iPhone, instal\u00e1 la app en la pantalla de inicio.');return}
     if(!window.VAPID_KEY){note('Falta VAPID_KEY en config.js.');return}
