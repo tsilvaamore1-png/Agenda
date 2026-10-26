@@ -120,6 +120,7 @@ function showWA(o){
   const d=document.createElement('div'),B='width:100%;height:52px;border-radius:26px;border:0;font:inherit;font-weight:700;cursor:pointer;margin-bottom:10px',android=/Android/i.test(navigator.userAgent);
   d.style.cssText='position:fixed;inset:0;z-index:200;background:var(--bg);color:var(--fg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto';
   d.innerHTML=`<div style="width:100%;max-width:380px"><h1 style="margin:0 0 6px;font-size:24px">${o.ok?'Avisale a '+esc(o.nm):o.nm?'Recordale a '+esc(o.nm):'Enviar mensaje'}</h1><p style="color:var(--mute);margin:0 0 14px">Toc\u00e1 el bot\u00f3n: se abre WhatsApp con el mensaje escrito y solo ten\u00e9s que enviar.</p><div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:16px;white-space:pre-wrap">${esc(o.t||'')}</div><button id="wA" style="${B};background:var(--y);color:var(--yfg)">Abrir WhatsApp</button>${android?`<button id="wB" style="${B};background:var(--card);color:var(--fg)">Abrir WhatsApp Business</button>`:''}<button id="wX" style="${B};background:none;color:var(--mute)">Cerrar</button></div>`;
+  d.id='waS';if(o.auto)d.dataset.auto='1';
   document.body.appendChild(d);
   d.querySelector('#wA').onclick=()=>openWA(o.n,o.t);
   if(android)d.querySelector('#wB').onclick=()=>{location.href=waBiz(o.n,o.t)};
@@ -129,8 +130,13 @@ const fill=(s,t)=>(s||TPLOK).replace(/\{nombre\}/g,t.nombre).replace(/\{fecha\}/
 window.approveT=t=>{
   t.estado='confirmado';saveT(t);render();if($('sR').style.display!=='none')renderR();
   let msg='',tl='';try{tl=waNum(t.tel||'');msg=fill(rm.tplOk,t)}catch(err){msg='Hola '+t.nombre+', tu sesi\u00f3n qued\u00f3 confirmada.'}
-  if(tl){openWA(tl,msg);setTimeout(()=>{if(!document.hidden)showWA({n:tl,nm:t.nombre,t:msg,ok:1})},1800)}
-  else showWA({n:'',nm:t.nombre,t:msg,ok:1})};
+  if(tl)openWAfb(tl,t.nombre,msg);else showWA({n:'',nm:t.nombre,t:msg,ok:1})};
+$('lista').addEventListener('click',e=>{const a=e.target.closest('[data-a="ok"]'),c=a&&a.closest('.t');if(!c)return;e.stopImmediatePropagation();e.stopPropagation();const t=turnos.find(x=>x.id===c.dataset.id);if(t)approveT(t)},true);
+function openWAfb(n,nm,msg){let left=false;
+  const f=()=>{if(document.hidden){left=true;const e=document.getElementById('waS');if(e&&e.dataset.auto)e.remove()}},b=()=>{left=true};
+  document.addEventListener('visibilitychange',f);window.addEventListener('blur',b);window.addEventListener('pagehide',b);
+  openWA(n,msg);
+  setTimeout(()=>{window.removeEventListener('blur',b);window.removeEventListener('pagehide',b);if(!left&&!document.hidden)showWA({n:n,nm:nm,t:msg,ok:1,auto:1});setTimeout(()=>document.removeEventListener('visibilitychange',f),120000)},2500)}
 const mlab=m=>m%1440===0?(m/1440)+(m===1440?' d\u00eda':' d\u00edas'):m%60===0?(m/60)+(m===60?' hora':' horas'):m+' min';
 const saveRm=()=>{if(db)db.doc('config/remind').set(rm)};
 const u8=b=>{const p='='.repeat((4-b.length%4)%4),r=atob((b+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(r,c=>c.charCodeAt(0))};
