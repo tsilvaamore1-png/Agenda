@@ -74,8 +74,11 @@ input:focus{border-color:var(--y)}
 .r{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .r:last-child{border:0}
 .r label{color:var(--mute);font-size:13px;width:80px}
-.r input[type=text],.r input[type=date],.r input[type=time]{flex:1;min-width:0;text-align:right;background:none;border:0;outline:none;font-size:17px;font-weight:600;padding:6px 8px;border-radius:8px}
+.r input[type=text],.r input[type=tel],.r input[type=date],.r input[type=time]{flex:1;min-width:0;text-align:right;background:none;border:0;outline:none;font-size:17px;font-weight:600;padding:6px 8px;border-radius:8px}
 .r input.miss{outline:2px solid var(--y)}
+#vR .r input[type=date],#vR .r input[type=time]{display:flex;justify-content:flex-end;text-align:right;-webkit-appearance:none;appearance:none}
+#vR .r input::-webkit-datetime-edit{flex:none;text-align:right;padding:0}
+#vR .r input::-webkit-date-and-time-value{text-align:right;margin:0}
 .sw{width:48px;height:28px;border-radius:14px;border:0;background:var(--line);position:relative;cursor:pointer}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--bg);transition:.15s}
 .sw.on{background:var(--y)}.sw.on::after{left:23px}

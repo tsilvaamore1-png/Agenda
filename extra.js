@@ -45,7 +45,7 @@ cp('bkCopy','bkLink');cp('bkOCopy','bkOLink');
 $('bkRot').onclick=()=>ask('Si cambi\u00e1s el link, el anterior deja de funcionar. \u00bfCambiarlo?',async()=>{await(window.rotateOnce&&window.rotateOnce());renderR()},'Cambiar');
 $('bkPend').onclick=e=>{const o=e.target.closest('[data-ok]'),n=e.target.closest('[data-no]');
   if(o){const t=turnos.find(x=>x.id===o.dataset.ok);t.estado='confirmado';saveT(t);render();renderR();const tl=waNum(t.tel||''),msg=fill(rm.tplOk,t);
-    if(tl){const and=/Android/i.test(navigator.userAgent);location.href=and?waBiz(tl,msg):waApp(tl,msg);setTimeout(()=>{if(!document.hidden)showWA({n:tl,nm:t.nombre,t:msg,ok:1})},1800)}
+    if(tl){openWA(tl,msg);setTimeout(()=>{if(!document.hidden)showWA({n:tl,nm:t.nombre,t:msg,ok:1})},1800)}
     else showWA({n:'',nm:t.nombre,t:msg,ok:1})}
   if(n)delT(n.dataset.no)};
 
@@ -115,15 +115,14 @@ let rm={push:[60],wa:[1440],tpl:TPL,tplOk:TPLOK},rmNote='';
 const waNum=p=>{let d=String(p||'').replace(/\D/g,'').replace(/^00/,'');if(d.startsWith('54')){if(!d.startsWith('549'))d='549'+d.slice(2)}else d='549'+d.replace(/^0/,'');return d.length>=12?d:''};
 const waLink=(n,t)=>'https://wa.me/'+n+'?text='+encodeURIComponent(t);
 const waApp=(n,t)=>'whatsapp://send?'+(n?'phone='+n+'&':'')+'text='+encodeURIComponent(t);
-const waBiz=(n,t)=>'intent://send/?'+(n?'phone='+n+'&':'')+'text='+encodeURIComponent(t)+'#Intent;scheme=whatsapp;package=com.whatsapp.w4b;end';
-const openWA=(n,t)=>{location.href=waApp(n,t)};
+const waBiz=(n,t)=>'intent://send/?'+(n?'phone='+n+'&':'')+'text='+encodeURIComponent(t)+'#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url='+encodeURIComponent(n?waLink(n,t):'https://wa.me/?text='+encodeURIComponent(t))+';end';
+const openWA=(n,t)=>{const ua=navigator.userAgent;if(/Android/i.test(ua))location.href=waBiz(n,t);else if(/iPhone|iPad|iPod/i.test(ua))location.href=waApp(n,t);else{const u=n?waLink(n,t):'https://wa.me/?text='+encodeURIComponent(t);if(!window.open(u,'_blank'))location.href=u}};
 function showWA(o){
   const d=document.createElement('div'),B='width:100%;height:52px;border-radius:26px;border:0;font:inherit;font-weight:700;cursor:pointer;margin-bottom:10px',android=/Android/i.test(navigator.userAgent);
   d.style.cssText='position:fixed;inset:0;z-index:200;background:var(--bg);color:var(--fg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto';
-  d.innerHTML=`<div style="width:100%;max-width:380px"><h1 style="margin:0 0 6px;font-size:24px">${o.ok?'Avisale a '+esc(o.nm):o.nm?'Recordale a '+esc(o.nm):'Enviar mensaje'}</h1><p style="color:var(--mute);margin:0 0 14px">Toc\u00e1 el bot\u00f3n: se abre WhatsApp con el mensaje escrito y solo ten\u00e9s que enviar.</p><div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:16px;white-space:pre-wrap">${esc(o.t||'')}</div><button id="wA" style="${B};background:var(--y);color:var(--yfg)">Abrir WhatsApp</button>${android?`<button id="wB" style="${B};background:var(--card);color:var(--fg)">Abrir WhatsApp Business</button>`:''}<button id="wX" style="${B};background:none;color:var(--mute)">Cerrar</button></div>`;
+  d.innerHTML=`<div style="width:100%;max-width:380px"><h1 style="margin:0 0 6px;font-size:24px">${o.ok?'Avisale a '+esc(o.nm):o.nm?'Recordale a '+esc(o.nm):'Enviar mensaje'}</h1><p style="color:var(--mute);margin:0 0 14px">Toc\u00e1 el bot\u00f3n: se abre WhatsApp con el mensaje escrito y solo ten\u00e9s que enviar.</p><div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:16px;white-space:pre-wrap">${esc(o.t||'')}</div><button id="wA" style="${B};background:var(--y);color:var(--yfg)">Abrir WhatsApp</button><button id="wX" style="${B};background:none;color:var(--mute)">Cerrar</button></div>`;
   document.body.appendChild(d);
   d.querySelector('#wA').onclick=()=>openWA(o.n,o.t);
-  if(android)d.querySelector('#wB').onclick=()=>{location.href=waBiz(o.n,o.t)};
   d.querySelector('#wX').onclick=()=>d.remove()}
 {const q=new URLSearchParams(location.search).get('wa');if(q){let o=null;try{o=JSON.parse(q)}catch(err){}if(o&&o.t){history.replaceState({},'',location.pathname);const go=()=>showWA(o);document.body?go():addEventListener('DOMContentLoaded',go)}}}
 const fill=(s,t)=>(s||TPLOK).replace(/\{nombre\}/g,t.nombre).replace(/\{fecha\}/g,fmt(t.fecha).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})).replace(/\{hora\}/g,t.hora);
