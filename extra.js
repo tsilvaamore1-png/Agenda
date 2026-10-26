@@ -44,7 +44,7 @@ const cp=(b,i)=>$(b).onclick=async()=>{const x=$(i);try{await navigator.clipboar
 cp('bkCopy','bkLink');cp('bkOCopy','bkOLink');
 $('bkRot').onclick=()=>ask('Si cambi\u00e1s el link, el anterior deja de funcionar. \u00bfCambiarlo?',async()=>{await(window.rotateOnce&&window.rotateOnce());renderR()},'Cambiar');
 $('bkPend').onclick=e=>{const o=e.target.closest('[data-ok]'),n=e.target.closest('[data-no]');
-  if(o){const t=turnos.find(x=>x.id===o.dataset.ok);t.estado='confirmado';saveT(t);render();const tl=waNum(t.tel||'');if(tl)ask('\u00bfAvisarle por WhatsApp que su sesi\u00f3n qued\u00f3 confirmada?',()=>window.open(waLink(tl,fill(rm.tplOk,t)),'_blank'),'Abrir WhatsApp')}
+  if(o){const t=turnos.find(x=>x.id===o.dataset.ok);t.estado='confirmado';saveT(t);render();const tl=waNum(t.tel||'');if(tl)ask('\u00bfAvisarle por WhatsApp que su sesi\u00f3n qued\u00f3 confirmada?',()=>window.open(waLink(tl,fill(rm.tplOk,t)),'_blank'),'Abrir WhatsApp');else ask('Sesi\u00f3n confirmada. No pude avisarle por WhatsApp porque el tel\u00e9fono'+(t.tel?' ('+t.tel+') no es v\u00e1lido: tiene que incluir la caracter\u00edstica':' no est\u00e1 cargado')+'.',null,'Entendido')}
   if(n)delT(n.dataset.no)};
 
 /* fichas */
@@ -116,7 +116,7 @@ const fill=(s,t)=>(s||TPLOK).replace(/\{nombre\}/g,t.nombre).replace(/\{fecha\}/
 const mlab=m=>m%1440===0?(m/1440)+(m===1440?' d\u00eda':' d\u00edas'):m%60===0?(m/60)+(m===60?' hora':' horas'):m+' min';
 const saveRm=()=>{if(db)db.doc('config/remind').set(rm)};
 const u8=b=>{const p='='.repeat((4-b.length%4)%4),r=atob((b+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(r,c=>c.charCodeAt(0))};
-const regP=async()=>{try{const reg=await navigator.serviceWorker.ready;return{reg,sub:await reg.pushManager.getSubscription()}}catch(err){return{}}};
+const regP=async()=>{try{const reg=await Promise.race([navigator.serviceWorker.ready,new Promise((_,no)=>setTimeout(no,5000))]);return{reg,sub:await reg.pushManager.getSubscription()}}catch(err){return{}}};
 const IN='background:var(--card);border:1px solid transparent;border-radius:12px;padding:12px;color:var(--fg);font:inherit;outline:none';
 const adder=k=>`<div style="display:flex;gap:8px;margin:4px 0 6px"><input type="number" id="rmN${k}" min="1" inputmode="numeric" placeholder="Cantidad" style="${IN};flex:1;min-width:0"><select id="rmU${k}" style="${IN}"><option value="1">minutos</option><option value="60" selected>horas</option><option value="1440">d\u00edas</option></select><button data-add="${k}" style="border:0;border-radius:12px;padding:0 16px;background:var(--y);color:var(--yfg);font:inherit;font-weight:700;cursor:pointer">Agregar</button></div>`;
 window.renderRm=async()=>{
@@ -136,7 +136,7 @@ $('rmBody').onclick=async e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.id==='rmTest'){try{const{reg}=await regP();if(Notification.permission!=='granted'&&await Notification.requestPermission()!=='granted'){note('Permiso de notificaciones denegado.');return}await reg.showNotification('Recordale a Gustavo P\u00e9rez',{body:'Sesi\u00f3n del jueves a las 15:00. Toc\u00e1 para abrir WhatsApp.',data:{url:waLink('5491112345678',fill(rm.tpl||TPL,{nombre:'Gustavo',fecha:key(new Date()),hora:'15:00'}))},actions:[{action:'wa',title:'Enviar WhatsApp'}]})}catch(err){note('Este navegador no permite avisos.')}return}
   if(b.id==='rmPush'){
-    if(!('PushManager' in window)){note('Este navegador no permite avisos. En iPhone, instal\u00e1 la app en la pantalla de inicio.');return}
+    if(!('PushManager' in window)||!(await regP()).reg){note('Este navegador no permite avisos. En iPhone, instal\u00e1 la app en la pantalla de inicio.');return}
     if(!window.VAPID_KEY){note('Falta VAPID_KEY en config.js.');return}
     try{const{reg,sub}=await regP();
       if(sub){await window.dropPush(sub.endpoint);await sub.unsubscribe();note('')}
@@ -148,7 +148,7 @@ $('rmBody').onclick=async e=>{
 
 /* suscripciones cuando hay conexi\u00f3n */
 (async()=>{try{const d=await claude.use('db');if(!d)return;
-  d.doc('config/remind').onSnapshot(s=>{if(s.exists){const c=s.data();rm={push:Array.isArray(c.push)?c.push:rm.push,wa:Array.isArray(c.wa)?c.wa:[],tpl:c.tpl||TPL,tplOk:c.tplOk||TPLOK}}if($('sRm').style.display!=='none'&&!document.activeElement.matches('textarea,input,select'))renderRm()});
+  d.doc('config/remind').onSnapshot(s=>{if(s.exists){const c=s.data();rm={push:Array.isArray(c.push)?c.push:rm.push,wa:Array.isArray(c.wa)?c.wa:[],tpl:c.tpl||TPL,tplOk:c.tplOk||TPLOK}}else if(typeof canW==='undefined'||canW)saveRm();if($('sRm').style.display!=='none'&&!document.activeElement.matches('textarea,input,select'))renderRm()});
   $('accMail').textContent=window.USER_EMAIL||'';
   d.doc('booking/main').onSnapshot(s=>{if(s.exists)bk={...bk,...s.data()};renderR()});
   d.collection('hist').onSnapshot(s=>{hist=s.docs.map(x=>x.data()).sort((a,b)=>b.ts-a.ts).slice(0,150);renderHi()});
