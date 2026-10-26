@@ -44,9 +44,7 @@ const cp=(b,i)=>$(b).onclick=async()=>{const x=$(i);try{await navigator.clipboar
 cp('bkCopy','bkLink');cp('bkOCopy','bkOLink');
 $('bkRot').onclick=()=>ask('Si cambi\u00e1s el link, el anterior deja de funcionar. \u00bfCambiarlo?',async()=>{await(window.rotateOnce&&window.rotateOnce());renderR()},'Cambiar');
 $('bkPend').onclick=e=>{const o=e.target.closest('[data-ok]'),n=e.target.closest('[data-no]');
-  if(o){const t=turnos.find(x=>x.id===o.dataset.ok);t.estado='confirmado';saveT(t);render();renderR();const tl=waNum(t.tel||''),msg=fill(rm.tplOk,t);
-    if(tl){openWA(tl,msg);setTimeout(()=>{if(!document.hidden)showWA({n:tl,nm:t.nombre,t:msg,ok:1})},1800)}
-    else showWA({n:'',nm:t.nombre,t:msg,ok:1})}
+  if(o){const t=turnos.find(x=>x.id===o.dataset.ok);if(t)approveT(t)}
   if(n)delT(n.dataset.no)};
 
 /* fichas */
@@ -128,6 +126,11 @@ function showWA(o){
   d.querySelector('#wX').onclick=()=>d.remove()}
 {const q=new URLSearchParams(location.search).get('wa');if(q){let o=null;try{o=JSON.parse(q)}catch(err){}if(o&&o.t){history.replaceState({},'',location.pathname);const go=()=>showWA(o);document.body?go():addEventListener('DOMContentLoaded',go)}}}
 const fill=(s,t)=>(s||TPLOK).replace(/\{nombre\}/g,t.nombre).replace(/\{fecha\}/g,fmt(t.fecha).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})).replace(/\{hora\}/g,t.hora);
+window.approveT=t=>{
+  t.estado='confirmado';saveT(t);render();if($('sR').style.display!=='none')renderR();
+  let msg='',tl='';try{tl=waNum(t.tel||'');msg=fill(rm.tplOk,t)}catch(err){msg='Hola '+t.nombre+', tu sesi\u00f3n qued\u00f3 confirmada.'}
+  if(tl){openWA(tl,msg);setTimeout(()=>{if(!document.hidden)showWA({n:tl,nm:t.nombre,t:msg,ok:1})},1800)}
+  else showWA({n:'',nm:t.nombre,t:msg,ok:1})};
 const mlab=m=>m%1440===0?(m/1440)+(m===1440?' d\u00eda':' d\u00edas'):m%60===0?(m/60)+(m===60?' hora':' horas'):m+' min';
 const saveRm=()=>{if(db)db.doc('config/remind').set(rm)};
 const u8=b=>{const p='='.repeat((4-b.length%4)%4),r=atob((b+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(r,c=>c.charCodeAt(0))};

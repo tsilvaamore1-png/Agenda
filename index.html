@@ -22,6 +22,7 @@ button,input,textarea{font:inherit;color:inherit}
 header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;position:relative}
 .mesb{background:none;border:0;padding:4px 8px 4px 0;font-size:26px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px}
 .mesb i{font-style:normal;font-size:14px;color:var(--mute)}
+.mesb{white-space:nowrap;min-width:0}.mesb.sm{font-size:20px}.nav{flex:none}.nav .hoy{padding:6px 12px}.nav .ib{width:38px}header{gap:6px}
 .nav{display:flex;gap:4px;align-items:center}
 .ib{background:none;border:0;width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer}
 .ib:active{background:var(--card)}
@@ -329,6 +330,7 @@ const fmt=k=>{const[y,m,d]=k.split('-');return new Date(y,m-1,d)};
 
 /* ---------- Calendario ---------- */
 function render(){
+  $('mes').classList.toggle('sm',vy!==today.getFullYear()&&MES[vm].length>=9);
   $('mes').innerHTML=cap(MES[vm])+(vy!==today.getFullYear()?' '+vy:'')+' <i>▾</i>';
   const off=(new Date(vy,vm,1).getDay()+6)%7, start=new Date(vy,vm,1-off);
   let h='';
@@ -523,7 +525,7 @@ $('cfy').onclick=()=>{$('cf').classList.remove('on');const f=yesFn;yesFn=null;if
 $('lista').onclick=e=>{
   const c=e.target.closest('.t');if(!c)return;const id=c.dataset.id,a=e.target.closest('[data-a]');
   if(a){
-    if(a.dataset.a==='ok'){const t=turnos.find(x=>x.id===id);t.estado='confirmado';saveT(t);render()}else if(a.dataset.a==='n')openNotes(id);
+    if(a.dataset.a==='ok'){const t=turnos.find(x=>x.id===id);if(window.approveT)approveT(t);else{t.estado='confirmado';saveT(t);render()}}else if(a.dataset.a==='n')openNotes(id);
     else if(a.dataset.a==='e')openEdit(id);
     else{const t=turnos.find(x=>x.id===id);ask('¿Borrar el turno de '+t.nombre+' '+t.apellido+'?',()=>{delT(id);openId=null;render()},'Borrar')}
     return}
