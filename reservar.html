@@ -1,8 +1,9 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Reservar turno</title>
 <style>
 :root{--bg:#000;--fg:#f4f4f4;--mute:#8a8a8a;--card:#141414;--line:#222;--y:#FFD60A;color-scheme:dark}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,system-ui,sans-serif;display:flex;justify-content:center}
-main{width:100%;max-width:480px;padding:20px 16px 40px}h1{font-size:24px;margin:0 0 4px}.s{color:var(--mute);margin:0 0 16px;font-size:14px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;min-height:100dvh}
+main{width:100%;max-width:480px;padding:20px 16px 24px;flex:1 0 auto}h1{font-size:24px;margin:0 0 4px}.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.hoy{flex:none;border:1px solid var(--line);background:none;border-radius:20px;padding:6px 14px;font-size:14px;cursor:pointer;margin-top:2px}
+.lg{display:block;width:100%;height:auto;flex:none;margin:0;padding-bottom:env(safe-area-inset-bottom,0)}.s{color:var(--mute);margin:0 0 16px;font-size:14px}
 button{font:inherit;color:inherit;cursor:pointer}.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.hd b{font-size:20px;text-transform:capitalize}
 .ib{background:none;border:0;width:40px;height:40px;font-size:20px;border-radius:50%}
 .g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.w{text-align:center;color:var(--mute);font-size:12px;padding:4px 0}
@@ -16,9 +17,10 @@ input{width:100%;background:var(--card);border:1px solid transparent;border-radi
 .pri{width:100%;height:52px;border:0;border-radius:26px;background:var(--y);color:#111;font-weight:700;margin-top:4px}.pri:disabled{opacity:.4}
 .er{color:#ff6b6b;min-height:20px;font-size:14px}.ok{text-align:center;padding:24px 0}.lk{width:100%;background:none;border:0;color:var(--mute);margin-top:8px;font-size:15px}
 </style></head><body><main>
-<h1>Reservar turno</h1><p class="s" id="s">Elegí un día con horarios disponibles.</p>
+<div class="top"><div><h1>Reservar turno</h1><p class="s" id="s">Elegí un día con horarios disponibles.</p></div><button class="hoy" id="hoy">Hoy</button></div>
 <div class="hd"><button class="ib" id="pv">‹</button><b id="mt"></b><button class="ib" id="nx">›</button></div>
 <div class="g" id="wk"></div><div class="g" id="gr"></div></main>
+<img class="lg" src="logo.jpg" width="1200" height="524" alt="Claridad en Proceso">
 <div id="ov"><div class="sh" id="sh"></div></div>
 <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
@@ -49,6 +51,7 @@ function form(){step='f';$('sh').innerHTML=`<h2>${dt(sel)}</h2><p class="s">Sesi
 const closeS=()=>{$('ov').classList.remove('on');step=null};
 $('ov').onclick=e=>{if(e.target===$('ov'))closeS()};
 $('gr').onclick=e=>{const b=e.target.closest('.d.on');if(b){sel=b.dataset.k;sheet()}};
+$('hoy').onclick=()=>{const n=new Date();vy=n.getFullYear();vm=n.getMonth();draw()};
 $('pv').onclick=()=>{vm--;if(vm<0){vm=11;vy--}draw()};$('nx').onclick=()=>{vm++;if(vm>11){vm=0;vy++}draw()};
 $('sh').onclick=async e=>{
   const h=e.target.closest('[data-h]');if(h){hora=h.dataset.h;form();return}
@@ -62,5 +65,5 @@ $('sh').onclick=async e=>{
   if(d.ok){step='ok';$('sh').innerHTML=`<div class="ok"><div style="font-size:42px">✓</div><h2>${d.estado==='pendiente'?'Solicitud enviada':'¡Turno agendado!'}</h2><p class="s">${d.estado==='pendiente'?'Tu turno queda pendiente de aprobación.':dt(sel)+' a las '+hora}</p><button class="pri" id="cl">Listo</button></div>`;load();return}
   const M={ocupado:'Ese horario se acaba de ocupar. Elegí otro.',limite:'Ya reservaste un turno con este link.',cerrado:'Las reservas no están disponibles por ahora.',tel:'Ingresá un teléfono válido.',datos:'Revisá nombre y apellido.'};
   await load();if(d.error==='ocupado'){hora=null;sheet(M.ocupado)}else{$('go').disabled=false;$('er').textContent=M[d.error]||'No se pudo agendar. Probá de nuevo.'}};
-if(!sb||!C){$('s').textContent='Este link no es válido.'}else{load();setInterval(load,4000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()})}
+if(!sb||!C){$('s').textContent='Este link no es válido.'}else{load();setInterval(()=>{if(!document.hidden)load()},4000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()})}
 </script></body></html>
