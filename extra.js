@@ -22,14 +22,18 @@ window.renderC=()=>{$('cMail').textContent=window.USER_EMAIL||'';$('cRol').textC
 $('cPw').onclick=()=>window.changePassword&&window.changePassword();
 
 /* historial */
-const logH=t=>{try{if(db&&me)Promise.resolve(db.doc('hist/'+gid()).set({ts:Date.now(),by:me.id,text:t})).catch(console.error)}catch(err){console.error(err)}};
+const logH=(t,x)=>{try{if(db&&me){const id=gid();Promise.resolve(db.doc('hist/'+id).set({id,ts:Date.now(),by:me.id,text:t,...(x||{})})).catch(console.error)}}catch(err){console.error(err)}};
 const _sT=saveT,_dT=delT;
 window.saveT=t=>{const nw=!turnos.includes(t);_sT(t);logH((nw?'Agend\u00f3':'Modific\u00f3')+' turno de '+t.nombre+' '+t.apellido+' ('+lab(t)+')')};
-window.delT=id=>{const t=turnos.find(x=>x.id===id);_dT(id);if(t)logH('Borr\u00f3 turno de '+t.nombre+' '+t.apellido+' ('+lab(t)+')')};
+window.delT=id=>{const t=turnos.find(x=>x.id===id);_dT(id);if(t)logH('Borr\u00f3 turno de '+t.nombre+' '+t.apellido+' ('+lab(t)+')',{del:{...t}})};
 const _r=render,_l=legend;
 window.legend=()=>{_l();if(db&&turnos.some(t=>t.by==='otro'))$('leg').insertAdjacentHTML('beforeend','<span><i class="dot" style="display:inline-block;vertical-align:-2px;background:#9AA0A6"></i> Otro</span>')};
 window.render=()=>{_r();legend();if($('sF').style.display!=='none'&&!document.activeElement.matches('#fTel'))renderF();if($('sR').style.display!=='none')renderR()};
-window.renderHi=()=>{$('hiBody').innerHTML=hist.length?hist.map(h=>{const d=new Date(h.ts);return `<div class="t" style="cursor:default"><div style="flex:1;min-width:0"><span style="white-space:normal">${esc(h.text)}</span><div class="mut">${d.toLocaleDateString('es-AR',{day:'numeric',month:'short'})} ${d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})} \u00b7 ${h.by==='otro'?'Otro (link)':esc(mname[h.by]||'Miembro')}</div></div></div>`}).join(''):'<div class="empty">Sin cambios registrados</div>'};
+window.renderHi=()=>{$('hiBody').innerHTML=hist.length?hist.map(h=>{const d=new Date(h.ts);return `<div class="t" style="cursor:default"><div style="flex:1;min-width:0"><span style="white-space:normal">${esc(h.text)}</span><div class="mut">${d.toLocaleDateString('es-AR',{day:'numeric',month:'short'})} ${d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})} \u00b7 ${h.by==='otro'?'Otro (link)':esc(mname[h.by]||'Miembro')}</div></div>${h.del&&canW?(h.restored?'<small>Restaurado</small>':`<button class="nb" data-rs="${h.id}">Restaurar</button>`):''}</div>`}).join(''):'<div class="empty">Sin cambios registrados</div>'};
+
+$('hiBody').onclick=e=>{const b=e.target.closest('[data-rs]');if(!b)return;const h=hist.find(x=>x.id===b.dataset.rs);if(!h||!h.del||h.restored)return;
+  const t={...h.del},go=()=>{saveT(t);try{db.doc('hist/'+h.id).update({restored:true})}catch(err){}render()};
+  if(turnos.some(o=>o.fecha===t.fecha&&Math.abs(mins(o.hora)-mins(t.hora))<90))ask('Ese horario ya est\u00e1 ocupado o muy cerca de otro turno. \u00bfRestaurar igual?',go,'Restaurar');else ask('\u00bfRestaurar el turno de '+t.nombre+' '+t.apellido+' ('+lab(t)+')?',go,'Restaurar')};
 
 /* reservas por link */
 const saveBk=()=>{if(db)db.doc('booking/main').set(bk)};
@@ -65,6 +69,9 @@ window.renderF=()=>{
     $('fList').innerHTML=vis.length?vis.map(p=>`<div class="t" data-f="${p.k}"><div style="flex:1;min-width:0"><span class="gt">${esc(p.nombre+' '+p.apellido)}</span><div class="mut">${p.ts.length} ${p.ts.length>1?'sesiones':'sesi\u00f3n'}</div></div><span style="color:var(--mute)">\u203a</span></div>`).join(''):'<div class="empty">'+(ps.length?'Sin resultados':'Todav\u00eda no hay consultantes')+'</div>';return}
   const f=fich[fsel]||{},ts=p.ts.slice().sort((a,b)=>(b.fecha+b.hora<a.fecha+a.hora)?-1:1),tel=f.tel||(ts.find(t=>t.tel)||{}).tel||'',first=p.ts.map(t=>t.fecha).sort()[0],d=new Date(),n=key(d)+' '+z(d.getHours())+':'+z(d.getMinutes());
   $('fBody').innerHTML=`<button class="hoy" id="fBack">\u2039 Todas las fichas</button><h2 style="color:var(--fg);font-size:22px;margin:14px 0 8px;text-transform:none">${esc(p.nombre+' '+p.apellido)}</h2><div class="rv"><div class="r"><label>Tel\u00e9fono</label><input type="text" id="fTel" inputmode="tel" value="${esc(tel)}" placeholder="Agregar"></div><div class="r"><label ${LW}>Primera sesi\u00f3n</label><span>${fS(first)}</span></div><div class="r"><label>Frecuencia</label><span>${freq(p.ts)}</span></div></div><h2>Historial de sesiones</h2>`+ts.map(t=>{const st=t.estado==='pendiente'?'Por aprobar':(t.fecha+' '+t.hora<n?'Realizada':'Pendiente');return `<div class="t" style="cursor:default"><b style="border-left-color:${colorOf(t.by)}">${t.hora}</b><span>${fS(t.fecha)}</span><small class="mut" style="margin-left:auto">${st}</small></div>`}).join('')};
+window.fichaHTML=t=>{const k=fk(t),ts=turnos.filter(x=>fk(x)===k).sort((a,b)=>(a.fecha+a.hora<b.fecha+b.hora)?-1:1),f=fich[k]||{},tel=f.tel||(ts.find(x=>x.tel)||{}).tel||'',d=new Date(),n=key(d)+' '+z(d.getHours())+':'+z(d.getMinutes());
+  const row=x=>{const st=x.estado==='pendiente'?'Por aprobar':(x.fecha+' '+x.hora<n?'Realizada':'Pendiente');return `<div style="display:flex;gap:8px;${x.id===t.id?'color:var(--fg);font-weight:700':''}"><span>${fS(x.fecha)}</span><span>${x.hora}</span><span style="margin-left:auto">${st}</span></div>`};
+  return `<div class="fi" style="flex-basis:100%;font-size:13px;color:var(--mute);border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><div>Tel\u00e9fono: <span style="color:var(--fg)">${esc(tel||'\u2014')}</span></div><div>Primera sesi\u00f3n: <span style="color:var(--fg)">${fS(ts[0].fecha)}</span></div><div>Frecuencia: <span style="color:var(--fg)">${freq(ts)}</span></div><div style="margin-top:6px">Historial de sesiones (${ts.length})</div><div style="max-height:130px;overflow:auto">${ts.map(row).join('')}</div></div>`};
 $('fBody').onclick=e=>{const c=e.target.closest('[data-f]');if(c){fsel=c.dataset.f;renderF()}if(e.target.id==='fBack'){fsel=null;renderF()}};
 $('fBody').oninput=e=>{if(e.target.id==='fQ'){fq=e.target.value;renderF()}};
 $('fBody').onchange=e=>{if(e.target.id==='fTel'&&db&&fsel)db.doc('fichas/'+fsel).update({tel:e.target.value.trim()})};
@@ -180,6 +187,6 @@ $('rmBody').onclick=async e=>{
   d.doc('config/remind').onSnapshot(s=>{if(s.exists){const c=s.data();rm={push:Array.isArray(c.push)?c.push:rm.push,wa:Array.isArray(c.wa)?c.wa:[],tpl:c.tpl||TPL,tplOk:c.tplOk||TPLOK}}else if(typeof canW==='undefined'||canW)saveRm();if($('sRm').style.display!=='none'&&!document.activeElement.matches('textarea,input,select'))renderRm()});
   $('accMail').textContent=window.USER_EMAIL||'';
   d.doc('booking/main').onSnapshot(s=>{if(s.exists)bk={...bk,...s.data()};renderR()});
-  d.collection('hist').onSnapshot(s=>{hist=s.docs.map(x=>x.data()).sort((a,b)=>b.ts-a.ts).slice(0,150);renderHi()});
+  d.collection('hist').onSnapshot(s=>{hist=s.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts).slice(0,150);renderHi()});
   d.collection('fichas').onSnapshot(s=>{fich={};s.docs.forEach(x=>fich[x.id]=x.data());if($('sF').style.display!=='none')renderF()})}catch(err){console.error(err)}})();
 })();
