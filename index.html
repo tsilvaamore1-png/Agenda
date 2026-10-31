@@ -154,6 +154,7 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
   <header>
     <button class="mesb" id="mes"></button>
     <div class="nav">
+      <button class="hoy" id="vsw">Mes</button>
       <button class="hoy" id="hoy">Hoy</button>
       <button class="ib" id="prev" aria-label="Mes anterior">‹</button>
       <button class="ib" id="next" aria-label="Mes siguiente">›</button>
@@ -333,25 +334,33 @@ const mins=h=>{const[a,b]=h.split(':');return +a*60+ +b};
 const fmt=k=>{const[y,m,d]=k.split('-');return new Date(y,m-1,d)};
 
 /* ---------- Calendario ---------- */
+let VM=(()=>{try{return localStorage.getItem('vw')||'m'}catch(e){return 'm'}})();
+function ficha(t){const all=turnos.filter(x=>nk(x)===nk(t)).sort((a,b)=>(a.fecha+a.hora<b.fecha+b.hora?-1:1)),n=(lnote(t)||'').split('\n')[0].slice(0,70);
+  return `<div class="fi" style="flex-basis:100%;font-size:13px;color:var(--mute)">Sesión ${all.indexOf(t)+1} de ${all.length}${t.primera?' · Primera sesión':''}${t.tel?' · '+esc(fmtTel(t.tel)):''}${n?'<br>'+esc(n):''}</div>`}
 function render(){
   $('mes').classList.toggle('sm',vy!==today.getFullYear()&&MES[vm].length>=9);
   $('mes').innerHTML=cap(MES[vm])+(vy!==today.getFullYear()?' '+vy:'')+' <i>▾</i>';
-  const off=(new Date(vy,vm,1).getDay()+6)%7, start=new Date(vy,vm,1-off);
+  let start,N=42,ws='',we='';
+  if(VM==='m'){const off=(new Date(vy,vm,1).getDay()+6)%7;start=new Date(vy,vm,1-off)}
+  else{const s0=fmt(sel);start=new Date(s0);start.setDate(s0.getDate()-(s0.getDay()+6)%7);N=7;ws=key(start);const e=new Date(start);e.setDate(e.getDate()+6);we=key(e)}
+  $('cal').style.display=VM==='d'?'none':'';$('vsw').textContent=VM==='m'?'Mes':VM==='w'?'Semana':'Día';
   let h='';
-  for(let i=0;i<42;i++){
+  for(let i=0;i<N;i++){
     const d=new Date(start);d.setDate(start.getDate()+i);const k=key(d);
     const c=turnos.filter(t=>t.fecha===k).length;
-    h+=`<button class="cell${d.getMonth()!==vm?' out':''}${k===key(today)?' today':''}${k===sel?' sel':''}${blocked(k)?' blk':''}" data-k="${k}"><span class="n">${d.getDate()}</span><span class="cnt${c?'':' none'}">${c||''}</span></button>`;
+    h+=`<button class="cell${VM==='m'&&d.getMonth()!==vm?' out':''}${k===key(today)?' today':''}${k===sel?' sel':''}${blocked(k)?' blk':''}" data-k="${k}"><span class="n">${d.getDate()}</span><span class="cnt${c?'':' none'}">${c||''}</span></button>`;
   }
   $('grid').innerHTML=h;
-  $('dia').textContent=fmt(sel).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-  const l=turnos.filter(t=>t.fecha===sel).sort((a,b)=>mins(a.hora)-mins(b.hora));
-  $('lista').innerHTML=l.length?l.map(t=>{const has=!!lnote(t)||(t.files||[]).length;return `<div class="t${openId===t.id?' open':''}" data-id="${t.id}"><b style="border-left-color:${colorOf(t.by)}">${t.hora}</b><span>${esc(t.nombre+' '+t.apellido)}${t.estado==='pendiente'?' <small style="color:var(--y)">· pendiente</small>':''}</span><button class="nb${has?'':' empty0'}" data-a="n">${has?'Ver notas':'Agregar notas'}</button>${openId===t.id&&canW?'<div class="ac">'+(t.estado==='pendiente'?'<button data-a="ok">Aprobar</button>':'')+'<button data-a="e">Editar</button><button class="del" data-a="d">Borrar</button></div>':''}</div>`}).join(''):'<div class="empty">Sin turnos este día</div>';
+  $('dia').textContent=VM==='w'?'Semana del '+fmt(ws).toLocaleDateString('es-AR',{day:'numeric',month:'short'})+' al '+fmt(we).toLocaleDateString('es-AR',{day:'numeric',month:'short'}):fmt(sel).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+  const l=turnos.filter(t=>VM==='w'?(t.fecha>=ws&&t.fecha<=we):t.fecha===sel).sort((a,b)=>a.fecha===b.fecha?mins(a.hora)-mins(b.hora):(a.fecha<b.fecha?-1:1));let pv='';
+  $('lista').innerHTML=l.length?l.map(t=>{const has=!!lnote(t)||(t.files||[]).length;const hd=VM==='w'&&t.fecha!==pv?`<div class="mut" style="padding:10px 4px 4px;text-transform:capitalize">${fmt(t.fecha).toLocaleDateString('es-AR',{weekday:'long',day:'numeric'})}</div>`:'';pv=t.fecha;return hd+`<div class="t${openId===t.id?' open':''}" data-id="${t.id}"><b style="border-left-color:${colorOf(t.by)}">${t.hora}</b><span>${esc(t.nombre+' '+t.apellido)}${t.estado==='pendiente'?' <small style="color:var(--y)">· pendiente</small>':''}</span><button class="nb${has?'':' empty0'}" data-a="n">${has?'Ver notas':'Agregar notas'}</button>${VM==='d'?ficha(t):''}${openId===t.id&&canW?'<div class="ac">'+(t.estado==='pendiente'?'<button data-a="ok">Aprobar</button>':'')+'<button data-a="e">Editar</button><button class="del" data-a="d">Borrar</button></div>':''}</div>`}).join(''):'<div class="empty">'+(VM==='w'?'Sin turnos esta semana':'Sin turnos este día')+'</div>';
 }
-function go(dir){vm+=dir;if(vm<0){vm=11;vy--}if(vm>11){vm=0;vy++}render();
+function go(dir){if(VM!=='m'){const d=fmt(sel);d.setDate(d.getDate()+dir*(VM==='w'?7:1));sel=key(d);vy=d.getFullYear();vm=d.getMonth();render();$('lista').animate([{transform:`translateX(${dir*40}px)`,opacity:.3},{transform:'none',opacity:1}],{duration:180});return}
+  vm+=dir;if(vm<0){vm=11;vy--}if(vm>11){vm=0;vy++}render();
   $('grid').animate([{transform:`translateX(${dir*40}px)`,opacity:.3},{transform:'none',opacity:1}],{duration:180})}
 $('grid').onclick=e=>{const b=e.target.closest('.cell');if(!b)return;sel=b.dataset.k;const d=fmt(sel);vy=d.getFullYear();vm=d.getMonth();render()};
 $('prev').onclick=()=>go(-1);$('next').onclick=()=>go(1);
+$('vsw').onclick=()=>{VM=VM==='m'?'w':VM==='w'?'d':'m';try{localStorage.setItem('vw',VM)}catch(e){}const d=fmt(sel);vy=d.getFullYear();vm=d.getMonth();render()};
 $('hoy').onclick=()=>{vy=today.getFullYear();vm=today.getMonth();sel=key(today);render()};
 let sx=0,sy=0;
 $('cal').addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
