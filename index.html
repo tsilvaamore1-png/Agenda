@@ -10,10 +10,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js'))</script>
 <style>
-:root{--bg:#fff;--fg:#111;--mute:#8a8a8a;--line:#ececec;--card:#f6f6f6;--y:#FFD60A;--yfg:#111;
+select option{background:var(--bg);color:var(--fg)}
+:root{--bg:#fff;--fg:#111;--mute:#8a8a8a;--line:#ececec;--card:#f6f6f6;--y:#111;--yfg:#fff;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--fg:#f4f4f4;--mute:#8a8a8a;--line:#222;--card:#141414}}
-:root[data-theme="dark"]{--bg:#000;--fg:#f4f4f4;--mute:#8a8a8a;--line:#222;--card:#141414;color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--fg:#f4f4f4;--mute:#8a8a8a;--line:#222;--card:#141414;--y:#fff;--yfg:#000}}
+:root[data-theme="dark"]{--bg:#000;--fg:#f4f4f4;--mute:#8a8a8a;--line:#222;--card:#141414;--y:#fff;--yfg:#000;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center}
@@ -451,6 +452,7 @@ function parse(raw){
 }
 
 /* ---------- Pantalla de dictado / verificación ---------- */
+var wM=false,wN=false,wQ=false,cM='',cN='',cQ='';
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null,live=false,got=false;
 function fallback(){live=false;$('mic').classList.remove('on');$('cap').innerHTML='Acá el micrófono está bloqueado. Tocá el campo de abajo, después el <b>micrófono de tu teclado</b> y hablá.';$('txt').classList.add('hl');$('txt').focus()}
@@ -476,11 +478,11 @@ $('rt').addEventListener('change',()=>{$('rt').value=fmtTel($('rt').value);mark(
 $('rp').onclick=()=>$('rp').classList.toggle('on');
 $('mic').onclick=()=>{
   if(!SR){fallback();return}
-  if(live){rec.stop();return}
-  try{rec=new SR();rec.lang='es-AR';rec.interimResults=false;
-    rec.onresult=e=>{got=true;review(e.results[0][0].transcript)};
-    rec.onerror=()=>{got=true;fallback()};
-    rec.onend=()=>{live=false;$('mic').classList.remove('on');if(!got)fallback()};
+  if(live){wM=false;rec.stop();return}
+  try{rec=new SR();rec.lang='es-AR';rec.interimResults=false;rec.continuous=true;cM='';wM=true;
+    rec.onresult=e=>{got=true;for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)cM+=e.results[i][0].transcript+' '};
+    rec.onerror=ev=>{if(ev&&(ev.error==='no-speech'||ev.error==='aborted'))return;wM=false;got=true;fallback()};
+    rec.onend=()=>{if(wM){try{rec.start();return}catch(_){}}wM=false;live=false;$('mic').classList.remove('on');if(cM.trim())review(cM.trim());else if(!got)fallback()};
     got=false;rec.start();live=true;$('mic').classList.add('on');$('cap').textContent='Escuchando…'}
   catch(e){fallback()}
 };
@@ -557,11 +559,11 @@ let nrec=null,nlive=false,ngot=false;
 function nkb(){nlive=false;$('ndic').classList.remove('on');$('ndic').innerHTML=MI+' Dictar';$('nhint').innerHTML='Acá el micrófono está bloqueado. Tocá la nota y usá el <b>micrófono de tu teclado</b>.';$('nta').focus()}
 $('ndic').onclick=()=>{
   if(!SR){nkb();return}
-  if(nlive){nrec.stop();return}
-  try{nrec=new SR();nrec.lang='es-AR';nrec.interimResults=false;
-    nrec.onresult=e=>{ngot=true;const v=$('nta').value;$('nta').value=(v&&!/\s$/.test(v)?v+' ':v)+e.results[0][0].transcript};
-    nrec.onerror=()=>{ngot=true;nkb()};
-    nrec.onend=()=>{nlive=false;$('ndic').classList.remove('on');$('ndic').innerHTML=MI+' Dictar';if(!ngot)nkb()};
+  if(nlive){wN=false;nrec.stop();return}
+  try{nrec=new SR();nrec.lang='es-AR';nrec.interimResults=false;nrec.continuous=true;wN=true;
+    nrec.onresult=e=>{ngot=true;for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal){const v=$('nta').value;$('nta').value=(v&&!/\s$/.test(v)?v+' ':v)+e.results[i][0].transcript}};
+    nrec.onerror=ev=>{if(ev&&(ev.error==='no-speech'||ev.error==='aborted'))return;wN=false;ngot=true;nkb()};
+    nrec.onend=()=>{if(wN){try{nrec.start();return}catch(_){}}wN=false;nlive=false;$('ndic').classList.remove('on');$('ndic').innerHTML=MI+' Dictar';if(!ngot)nkb()};
     ngot=false;nrec.start();nlive=true;$('ndic').classList.add('on');$('ndic').textContent='⏹ Escuchando…';$('nhint').textContent=''}
   catch(e){nkb()}
 };
@@ -682,17 +684,17 @@ $('aq').onkeydown=e=>{if(e.key==='Enter')sendA()};
 function akb(){alive=false;$('amic').classList.remove('on');$('ahint').innerHTML='Acá el micrófono está bloqueado. Tocá el campo y usá el <b>micrófono de tu teclado</b>.';$('aq').focus()}
 $('amic').onclick=()=>{
   if(!SR){akb();return}
-  if(alive){arec.stop();return}
-  try{arec=new SR();arec.lang='es-AR';arec.interimResults=false;
-    arec.onresult=e=>{agot=true;$('aq').value=e.results[0][0].transcript;sendA()};
-    arec.onerror=()=>{agot=true;akb()};
-    arec.onend=()=>{alive=false;$('amic').classList.remove('on');if(!agot)akb()};
+  if(alive){wQ=false;arec.stop();return}
+  try{arec=new SR();arec.lang='es-AR';arec.interimResults=false;arec.continuous=true;cQ='';wQ=true;
+    arec.onresult=e=>{agot=true;for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)cQ+=e.results[i][0].transcript+' '};
+    arec.onerror=ev=>{if(ev&&(ev.error==='no-speech'||ev.error==='aborted'))return;wQ=false;agot=true;akb()};
+    arec.onend=()=>{if(wQ){try{arec.start();return}catch(_){}}wQ=false;alive=false;$('amic').classList.remove('on');if(cQ.trim()){$('aq').value=cQ.trim();sendA()}else if(!agot)akb()};
     agot=false;arec.start();alive=true;$('amic').classList.add('on');$('ahint').textContent='Escuchando…'}
   catch(e){akb()}};
 
 /* ---------- Cuenta, sincronización y miembros ---------- */
 const LINK=()=>window.AGENDA_LINK||location.href;
-const PAL=['#FFD60A','#4DA3FF','#FF6B6B','#4CD9A0','#B084FF','#FF9F43','#2EC4B6','#F368E0'];
+const PAL=['#BDBDBD','#4DA3FF','#FF6B6B','#4CD9A0','#B084FF','#FF9F43','#2EC4B6','#F368E0'];
 let db=null,me=null,members=[],mname={},canW=true,isAdm=false;
 const mcol=id=>{const m=members.find(x=>x.id===id);return m?m.color:'var(--y)'};
 const gid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
