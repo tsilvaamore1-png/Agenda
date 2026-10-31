@@ -301,6 +301,8 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 let openId=null;
 const colorOf=id=>id==='otro'?'#9AA0A6':mcol(id);
 const lget=id=>{try{return localStorage.getItem('nt:'+id)||''}catch(e){return ''}};
+const nk=t=>'p:'+nz((t.nombre||'')+(t.apellido||'')).replace(/\s+/g,'');
+const lnote=t=>{const o=lget(t.id),k=nk(t);if(o){const p=lget(k);lset(k,!p?o:p.includes(o)?p:p+'\n'+o);lset(t.id,'')}return lget(k)};
 const lset=(id,v)=>{try{v?localStorage.setItem('nt:'+id,v):localStorage.removeItem('nt:'+id)}catch(e){}};
 const hh0=on=>({on,desde:'09:00',hasta:'20:00'});
 let cfg={horas:[hh0(false),hh0(true),hh0(true),hh0(true),hh0(true),hh0(true),hh0(true)],blocks:[]};
@@ -344,7 +346,7 @@ function render(){
   $('grid').innerHTML=h;
   $('dia').textContent=fmt(sel).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   const l=turnos.filter(t=>t.fecha===sel).sort((a,b)=>mins(a.hora)-mins(b.hora));
-  $('lista').innerHTML=l.length?l.map(t=>{const has=!!lget(t.id)||(t.files||[]).length;return `<div class="t${openId===t.id?' open':''}" data-id="${t.id}"><b style="border-left-color:${colorOf(t.by)}">${t.hora}</b><span>${esc(t.nombre+' '+t.apellido)}${t.estado==='pendiente'?' <small style="color:var(--y)">· pendiente</small>':''}</span><button class="nb${has?'':' empty0'}" data-a="n">${has?'Ver notas':'Agregar notas'}</button>${openId===t.id&&canW?'<div class="ac">'+(t.estado==='pendiente'?'<button data-a="ok">Aprobar</button>':'')+'<button data-a="e">Editar</button><button class="del" data-a="d">Borrar</button></div>':''}</div>`}).join(''):'<div class="empty">Sin turnos este día</div>';
+  $('lista').innerHTML=l.length?l.map(t=>{const has=!!lnote(t)||(t.files||[]).length;return `<div class="t${openId===t.id?' open':''}" data-id="${t.id}"><b style="border-left-color:${colorOf(t.by)}">${t.hora}</b><span>${esc(t.nombre+' '+t.apellido)}${t.estado==='pendiente'?' <small style="color:var(--y)">· pendiente</small>':''}</span><button class="nb${has?'':' empty0'}" data-a="n">${has?'Ver notas':'Agregar notas'}</button>${openId===t.id&&canW?'<div class="ac">'+(t.estado==='pendiente'?'<button data-a="ok">Aprobar</button>':'')+'<button data-a="e">Editar</button><button class="del" data-a="d">Borrar</button></div>':''}</div>`}).join(''):'<div class="empty">Sin turnos este día</div>';
 }
 function go(dir){vm+=dir;if(vm<0){vm=11;vy--}if(vm>11){vm=0;vy++}render();
   $('grid').animate([{transform:`translateX(${dir*40}px)`,opacity:.3},{transform:'none',opacity:1}],{duration:180})}
@@ -471,7 +473,14 @@ function review(text){
   const p=parse(text);
   $('heard').textContent='Escuché: “'+text+'”';
   $('rn').value=p.nombre;$('ra').value=p.apellido;$('rt').value=p.tel||'';$('rf').value=p.fecha;$('rh').value=p.hora;
-  $('rp').classList.toggle('on',p.primera);$('rr').classList.toggle('on',p.rec);$('rw').value=p.sem;$('rc').value=1;$('ru').value='w';$('rdu').value='w';$('rwr').style.display=p.rec?'':'none';$('err').textContent='';mark();view('R')}
+  $('rp').classList.toggle('on',p.primera);$('rr').classList.toggle('on',p.rec);$('rw').value=p.sem;$('rc').value=1;$('ru').value='w';$('rdu').value='w';$('rwr').style.display=p.rec?'':'none'
+  autofill();$('err').textContent='';mark();view('R')}
+function known(n,a){const nn=nz(n).trim(),aa=nz(a).trim();if(!nn)return null;
+  const L=turnos.filter(t=>nz(t.nombre).trim()===nn&&(!aa||nz(t.apellido).trim()===aa));
+  if(new Set(L.map(t=>nz(t.nombre+' '+t.apellido).trim())).size!==1)return null;
+  return L.slice().sort((x,y)=>x.fecha<y.fecha?1:-1).find(t=>t.tel)||L[0]}
+function autofill(){const k=known($('rn').value,$('ra').value);if(!k)return;if(!$('ra').value.trim())$('ra').value=k.apellido;if(!$('rt').value.trim()&&k.tel)$('rt').value=fmtTel(k.tel);mark()}
+$('rn').addEventListener('change',autofill);$('ra').addEventListener('change',autofill);
 function mark(){['rn','ra','rf','rh'].forEach(i=>$(i).classList.toggle('miss',!$(i).value.trim()));$('rt').classList.toggle('miss',!telOk($('rt').value))}
 const telOk=v=>String(v||'').replace(/\D/g,'').length>=10;
 ['rn','ra','rt','rf','rh'].forEach(i=>$(i).addEventListener('input',mark));
@@ -572,8 +581,8 @@ $('esave').onclick=()=>{
 let nid=null;
 let ntar=null;const cur=()=>ntar;
 function drawFiles(){$('nf').innerHTML=(cur().files||[]).map((f,i)=>`<div class="fl"><a href="#" data-p="${esc(f.path||'')}">📎 ${esc(f.name)}</a><button data-i="${i}" aria-label="Quitar">×</button></div>`).join('')}
-function openNotes(id){nid=id;ntar=turnos.find(x=>x.id===id);const t=cur();$('ntt').textContent='Notas · '+t.nombre+' '+t.apellido+' · '+t.hora;$('nta').value=lget(t.id);$('nhint').textContent='Solo en este dispositivo: no se sincroniza.';drawFiles();$('nt').classList.add('on')}
-function closeNotes(){if(nrec&&nlive)try{nrec.stop()}catch(e){}const g=cur(),v=$('nta').value.trim();if(g.gen){g.notes=v;g.ts=Date.now();if(!g.notes&&!(g.files||[]).length)delG(g);else saveG(g)}else lset(g.id,v);$('nt').classList.remove('on');render();renderN()}
+function openNotes(id){nid=id;ntar=turnos.find(x=>x.id===id);const t=cur();$('ntt').textContent='Notas · '+t.nombre+' '+t.apellido+' · '+t.hora;$('nta').value=lnote(t);$('nhint').textContent='Nota de '+t.nombre+': vale para todas sus sesiones. Solo en este dispositivo.';drawFiles();$('nt').classList.add('on')}
+function closeNotes(){if(nrec&&nlive)try{nrec.stop()}catch(e){}const g=cur(),v=$('nta').value.trim();if(g.gen){g.notes=v;g.ts=Date.now();if(!g.notes&&!(g.files||[]).length)delG(g);else saveG(g)}else{lset(nk(g),v);lset(g.id,'')}$('nt').classList.remove('on');render();renderN()}
 $('ndone').onclick=closeNotes;
 $('nt').onclick=e=>{if(e.target===$('nt'))closeNotes()};
 $('nat').onclick=()=>$('nfi').click();
