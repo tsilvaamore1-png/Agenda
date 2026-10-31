@@ -6,7 +6,7 @@ main{width:100%;max-width:480px;padding:20px 16px 24px;flex:1 0 auto}h1{font-siz
 .lg{display:block;width:100%;max-width:480px;height:auto;flex:none;margin:0;padding-bottom:env(safe-area-inset-bottom,0)}.s{color:var(--mute);margin:0 0 16px;font-size:14px}
 button{font:inherit;color:inherit;cursor:pointer}.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.hd b{font-size:20px;text-transform:capitalize}
 .ib{background:none;border:0;width:40px;height:40px;font-size:20px;border-radius:50%}
-.g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.w{text-align:center;color:var(--mute);font-size:12px;padding:4px 0}
+.g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}#gr{grid-template-rows:repeat(6,1fr);aspect-ratio:7/6}#gr .d{aspect-ratio:auto;min-height:0}.s{min-height:42px}.w{text-align:center;color:var(--mute);font-size:12px;padding:4px 0}
 .d{aspect-ratio:1;border:0;border-radius:14px;background:none;color:var(--mute);opacity:.35;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
 .d.on{background:var(--card);color:var(--fg);opacity:1}.d.on i{width:6px;height:6px;border-radius:50%;background:var(--y)}
 #ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center}#ov.on{display:flex}
@@ -44,6 +44,7 @@ function draw(){
   const off=(new Date(vy,vm,1).getDay()+6)%7,n=new Date(vy,vm+1,0).getDate();let h='';
   for(let i=0;i<off;i++)h+='<div></div>';
   for(let d=1;d<=n;d++){const k=vy+'-'+z(vm+1)+'-'+z(d),on=(days[k]||[]).length>0;h+=`<button class="d${on?' on':''}" data-k="${k}"${on?'':' disabled'}>${d}${on?'<i></i>':''}</button>`}
+  for(let i=off+n;i<42;i++)h+='<div class="d" style="visibility:hidden"></div>';
   $('gr').innerHTML=h}
 function sheet(m){const sl=days[sel]||[];step='t';
   $('sh').innerHTML=`<h2>${dt(sel)}</h2><p class="s">Agendar sesión · elegí un horario</p>${m?`<div class="er">${m}</div>`:''}<div class="ch">${sl.length?sl.map(h=>`<button data-h="${h}">${h}</button>`).join(''):'<span class="s">Ya no quedan horarios este día.</span>'}</div>`;$('ov').classList.add('on')}
