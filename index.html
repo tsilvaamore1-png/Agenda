@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js'))</script>
 <style>
+.r select{background:none;border:0;color:var(--fg);font:inherit;font-size:17px;font-weight:600;text-align:right;outline:none;padding:6px 0 6px 6px}
 select option{background:var(--bg);color:var(--fg)}
 :root{--bg:#fff;--fg:#111;--mute:#8a8a8a;--line:#ececec;--card:#f6f6f6;--y:#111;--yfg:#fff;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -252,8 +253,8 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
         <div class="r"><label>Fecha</label><input type="date" id="rf"></div>
         <div class="r"><label>Hora</label><input type="time" id="rh" step="900"></div>
         <div class="r"><label>Primera sesión</label><button class="sw" id="rp" aria-label="Primera sesión"></button></div>
-        <div class="r"><label>Repetir cada semana</label><button class="sw" id="rr" aria-label="Repetir cada semana"></button></div>
-        <div class="r" id="rwr" style="display:none"><label>Cantidad de semanas</label><input type="number" id="rw" min="2" max="104" value="12" inputmode="numeric"></div>
+        <div class="r"><label>Repetir cada…</label><button class="sw" id="rr" aria-label="Repetir cada"></button></div>
+        <div id="rwr" style="display:none"><div class="r"><label>Cada</label><input type="number" id="rc" min="1" max="52" value="1" inputmode="numeric" style="max-width:70px"><select id="ru"><option value="d">días</option><option value="w" selected>semanas</option><option value="m">meses</option></select></div><div class="r"><label>Durante</label><input type="number" id="rw" min="1" max="36" value="12" inputmode="numeric" style="max-width:70px"><select id="rdu"><option value="w" selected>semanas</option><option value="m">meses</option><option value="y">años</option></select></div></div>
       </div>
       <div class="err" id="err"></div>
       <div class="acts">
@@ -470,7 +471,7 @@ function review(text){
   const p=parse(text);
   $('heard').textContent='Escuché: “'+text+'”';
   $('rn').value=p.nombre;$('ra').value=p.apellido;$('rt').value=p.tel||'';$('rf').value=p.fecha;$('rh').value=p.hora;
-  $('rp').classList.toggle('on',p.primera);$('rr').classList.toggle('on',p.rec);$('rw').value=p.sem;$('rwr').style.display=p.rec?'':'none';$('err').textContent='';mark();view('R')}
+  $('rp').classList.toggle('on',p.primera);$('rr').classList.toggle('on',p.rec);$('rw').value=p.sem;$('rc').value=1;$('ru').value='w';$('rdu').value='w';$('rwr').style.display=p.rec?'':'none';$('err').textContent='';mark();view('R')}
 function mark(){['rn','ra','rf','rh'].forEach(i=>$(i).classList.toggle('miss',!$(i).value.trim()));$('rt').classList.toggle('miss',!telOk($('rt').value))}
 const telOk=v=>String(v||'').replace(/\D/g,'').length>=10;
 ['rn','ra','rt','rf','rh'].forEach(i=>$(i).addEventListener('input',mark));
@@ -503,8 +504,25 @@ function addDays(k,n){const d=fmt(k);d.setDate(d.getDate()+n);return key(d)}
 function build(){
   const b={nombre:$('rn').value.trim(),apellido:$('ra').value.trim(),tel:fmtTel($('rt').value),fecha:$('rf').value,hora:$('rh').value,primera:$('rp').classList.contains('on')};
   if(!b.nombre||!b.apellido||!telOk(b.tel)||!b.fecha||!b.hora){mark();$('err').textContent=$('rt').value.trim()&&!telOk(b.tel)?'El teléfono tiene que incluir la característica (ej. 11 2345 6789).':'Faltan datos: completá lo resaltado.';return null}
-  const n=$('rr').classList.contains('on')?Math.min(104,Math.max(2,+$('rw').value||12)):1;
-  return Array.from({length:n},(_,i)=>({...b,id:gid(),fecha:addDays(b.fecha,7*i)}))}
+  if(!$('rr').classList.contains('on'))return[{...b,id:gid()}];
+  const c=Math.max(1,+$('rc').value||1),u=$('ru').value,N=Math.max(1,+$('rw').value||1),du=$('rdu').value,st=fmt(b.fecha),end=new Date(st);
+  if(du==='m')end.setMonth(end.getMonth()+N);else if(du==='y')end.setFullYear(end.getFullYear()+N);else end.setDate(end.getDate()+7*N);
+  const L=[],sid=gid();
+  for(let i=0;i<200;i++){const d=new Date(st);
+    if(u==='m'){d.setDate(1);d.setMonth(st.getMonth()+c*i);d.setDate(Math.min(st.getDate(),new Date(d.getFullYear(),d.getMonth()+1,0).getDate()))}else d.setDate(st.getDate()+(u==='w'?7:1)*c*i);
+    if(d>end&&i>0)break;L.push({...b,id:gid(),fecha:key(d),serie:sid})}
+  if(L.length<2)delete L[0].serie;return L}
+function serieAsk(t,title,cb){
+  const k=x=>x.fecha+x.hora,sib=t.serie?turnos.filter(x=>x.serie===t.serie).sort((a,b)=>k(a)<k(b)?-1:1):[];
+  if(sib.length<2){cb([t]);return}
+  const aft=sib.filter(x=>k(x)>=k(t)),o=document.createElement('div');o.className='ov2 on';
+  const B='width:100%;margin-bottom:8px;height:46px';
+  o.innerHTML=`<div class="sheet"><div class="heard" style="font-size:16px;font-weight:600;color:var(--fg)">${title}: es parte de una serie</div><div id="sq"><button style="${B}" data-m="1">Solo este</button><button style="${B}" data-m="2">Este y los siguientes (${aft.length})</button><button style="${B}" data-m="3">Todos (${sib.length})</button><button style="${B}" data-m="4">Elegir cuáles…</button><button style="${B}" data-m="0">Cancelar</button></div></div>`;
+  document.body.appendChild(o);const q=o.querySelector('#sq'),end=l=>{o.remove();if(l&&l.length)cb(l)};
+  q.onclick=e=>{const m=e.target.dataset.m;if(m===undefined)return;
+    if(m==='0')end();else if(m==='1')end([t]);else if(m==='2')end(aft);else if(m==='3')end(sib);
+    else{q.innerHTML=sib.map(x=>`<label class="r" style="display:flex;align-items:center;justify-content:space-between"><span>${esc(lab(x))}</span><input type="checkbox" data-i="${x.id}"${x===t?' checked':''}></label>`).join('')+`<button style="${B}" class="pri" id="sgo">Aplicar</button><button style="${B}" id="scn">Cancelar</button>`;
+      q.querySelector('#sgo').onclick=()=>end(sib.filter(x=>q.querySelector('[data-i="'+x.id+'"]').checked));q.querySelector('#scn').onclick=()=>end()}}}
 function place(list){if(multi){pend.push(...list);drawPre();view('D')}else finish(list)}
 $('rr').onclick=()=>{$('rr').classList.toggle('on');$('rwr').style.display=$('rr').classList.contains('on')?'':'none'};
 $('ok').onclick=()=>{
@@ -529,7 +547,7 @@ $('lista').onclick=e=>{
   if(a){
     if(a.dataset.a==='ok'){const t=turnos.find(x=>x.id===id);if(window.approveT)approveT(t);else{t.estado='confirmado';saveT(t);render()}}else if(a.dataset.a==='n')openNotes(id);
     else if(a.dataset.a==='e')openEdit(id);
-    else{const t=turnos.find(x=>x.id===id);ask('¿Borrar el turno de '+t.nombre+' '+t.apellido+'?',()=>{delT(id);openId=null;render()},'Borrar')}
+    else{const t=turnos.find(x=>x.id===id);serieAsk(t,'Borrar',l=>ask(l.length>1?'¿Borrar '+l.length+' turnos de '+t.nombre+' '+t.apellido+'?':'¿Borrar el turno de '+t.nombre+' '+t.apellido+'?',()=>{l.forEach(x=>delT(x.id));openId=null;render()},'Borrar'))}
     return}
   openId=openId===id?null:id;render()};
 
@@ -544,8 +562,12 @@ $('esave').onclick=()=>{
   $('et').classList.toggle('miss',!telOk(tl));
   if(!n||!a||!f||!h||!telOk(tl)){$('eerr').textContent=!telOk(tl)&&$('et').value.trim()?'El teléfono tiene que incluir la característica (ej. 11 2345-6789).':'Completá todos los datos (incluido el teléfono).';return}
   if(turnos.some(o=>o.id!==eid&&o.fecha===f&&Math.abs(mins(o.hora)-mins(h))<90)){$('eerr').textContent='Choca con otro turno (60 min + 30 min de margen).';return}
-  Object.assign(t,{nombre:n,apellido:a,tel:tl,fecha:f,hora:h,primera:$('ep').classList.contains('on')});t.editedBy=me?me.id:'';saveT(t);
-  sel=f;const d=fmt(f);vy=d.getFullYear();vm=d.getMonth();$('ed').classList.remove('on');render()};
+  const pr=$('ep').classList.contains('on');
+  serieAsk(t,'Guardar cambios',list=>{
+    const dd=Math.round((fmt(f)-fmt(t.fecha))/864e5),pl=list.map(x=>({x,nf:x===t?f:addDays(x.fecha,dd)})),bad=pl.find(({nf})=>turnos.some(o=>!list.includes(o)&&o.fecha===nf&&Math.abs(mins(o.hora)-mins(h))<90));
+    if(bad){$('eerr').textContent='Choca con otro turno el '+lab({fecha:bad.nf,hora:h})+'.';return}
+    pl.forEach(({x,nf})=>{Object.assign(x,{nombre:n,apellido:a,tel:tl,fecha:nf,hora:h,primera:x===t?pr:x.primera});x.editedBy=me?me.id:'';saveT(x)});
+    sel=f;const d=fmt(f);vy=d.getFullYear();vm=d.getMonth();$('ed').classList.remove('on');render()})};
 
 let nid=null;
 let ntar=null;const cur=()=>ntar;
