@@ -237,6 +237,7 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
       <div class="micw">
         <button id="mic" aria-label="Dictar"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.125em"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button>
         <div id="cap">Tocá y decí nombre, apellido, fecha y hora. Si es primera sesión, decilo.</div>
+        <button id="kbm" style="background:none;border:0;color:var(--mute);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer;margin-top:8px">¿Se corta? Dictar con el teclado</button>
       </div>
       <div class="txt"><input type="text" id="txt" placeholder="Gustavo Pérez mañana 17 horas"><button id="go">→</button></div>
       <div class="acts" style="margin-top:16px">
@@ -497,13 +498,14 @@ $('rt').addEventListener('change',()=>{$('rt').value=fmtTel($('rt').value);mark(
 $('rp').onclick=()=>$('rp').classList.toggle('on');
 function dict(o){let want=true,acc='',sess='',any=false,fails=0,last=Date.now(),r;
   const done=()=>{want=false;o.onDone(acc.trim(),any)};
-  r=new SR();r.lang='es-AR';r.interimResults=true;r.continuous=true;
+  r=new SR();r.lang='es-AR';r.interimResults=true;r.continuous=false;
   r.onresult=e=>{any=true;sess=Array.from(e.results).map(x=>x[0].transcript).join(' ');o.onText((acc+' '+sess).trim())};
   r.onerror=ev=>{const c=ev&&ev.error;if(c==='not-allowed'||c==='service-not-allowed'||c==='audio-capture'){want=false;any=true;r.onend=null;o.onFail()}};
   r.onend=()=>{acc+=' '+sess;sess='';if(!want){o.onDone(acc.trim(),any);return}
     const n=Date.now();fails=n-last<400?fails+1:0;last=n;if(fails>8){done();return}
     try{r.start()}catch(_){setTimeout(()=>{try{r.start()}catch(e){done()}},120)}};
   r.start();return{stop(){want=false;try{r.stop()}catch(_){}}}}
+$('kbm').onclick=()=>{if(live&&rec)rec.stop();$('cap').innerHTML='Tocá el campo de abajo, después el <b>micrófono de tu teclado</b> y hablá todo lo que quieras. Al terminar tocá →.';$('txt').classList.add('hl');$('txt').focus()};
 $('mic').onclick=()=>{
   if(!SR){fallback();return}
   if(live){rec.stop();return}
