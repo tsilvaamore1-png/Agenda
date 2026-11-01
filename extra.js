@@ -29,7 +29,7 @@ const _sT=saveT,_dT=delT;
 window.saveT=t=>{const nw=!turnos.includes(t);_sT(t);logH((nw?'Agend\u00f3':'Modific\u00f3')+' turno de '+t.nombre+' '+t.apellido+' ('+lab(t)+')')};
 window.delT=id=>{const t=turnos.find(x=>x.id===id);_dT(id);if(t)logH('Borr\u00f3 turno de '+t.nombre+' '+t.apellido+' ('+lab(t)+')',{del:{...t}})};
 const _r=render,_l=legend;
-window.legend=()=>{_l();if(db&&turnos.some(t=>t.by==='otro'))$('leg').insertAdjacentHTML('beforeend','<span><i class="dot" style="display:inline-block;vertical-align:-2px;background:#9AA0A6"></i> Otro</span>')};
+window.legend=()=>{_l();if(db&&turnos.some(t=>t.by==='otro'))$('leg').insertAdjacentHTML('beforeend','<span><i class="dot" style="display:inline-block;vertical-align:-2px;background:'+OTRO+'"></i> Otro</span>')};
 window.render=()=>{_r();legend();if($('sF').style.display!=='none'&&!document.activeElement.matches('#fTel'))renderF();if($('sR').style.display!=='none')renderR()};
 window.renderHi=()=>{$('hiBody').innerHTML=hist.length?hist.map(h=>{const d=new Date(h.ts);return `<div class="t" style="cursor:default"><div style="flex:1;min-width:0"><span style="white-space:normal">${esc(h.text)}</span><div class="mut">${d.toLocaleDateString('es-AR',{day:'numeric',month:'short'})} ${d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})} \u00b7 ${h.by==='otro'?'Otro (link)':esc(mname[h.by]||'Miembro')}</div></div>${h.del&&canW?(h.restored?'<small>Restaurado</small>':`<button class="nb" data-rs="${h.id}">Restaurar</button>`):(/^Borr/.test(h.text)?'<small>No restaurable</small>':'')}</div>`}).join('')+'<div class="mut" style="text-align:center;padding:14px">Versi\u00f3n 31-oct-d</div>':'<div class="empty">Sin cambios registrados</div>'};
 
@@ -189,6 +189,7 @@ $('rmBody').onclick=async e=>{
   d.doc('config/remind').onSnapshot(s=>{if(s.exists){const c=s.data();rm={push:Array.isArray(c.push)?c.push:rm.push,wa:Array.isArray(c.wa)?c.wa:[],tpl:c.tpl||TPL,tplOk:c.tplOk||TPLOK}}else if(typeof canW==='undefined'||canW)saveRm();if($('sRm').style.display!=='none'&&!document.activeElement.matches('textarea,input,select'))renderRm()});
   $('accMail').textContent=window.USER_EMAIL||'';
   d.doc('booking/main').onSnapshot(s=>{if(s.exists)bk={...bk,...s.data()};renderR()});
+  d.doc('config/otro').onSnapshot(s=>{if(s.exists&&s.data().color){OTRO=s.data().color;render();renderM()}});
   d.collection('hist').onSnapshot(s=>{hist=s.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts).slice(0,150);renderHi()});
   d.collection('fichas').onSnapshot(s=>{fich={};s.docs.forEach(x=>fich[x.id]=x.data());if($('sF').style.display!=='none')renderF()})}catch(err){console.error(err)}})();
 })();

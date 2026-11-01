@@ -300,7 +300,7 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let openId=null;
-const colorOf=id=>id==='otro'?'#9AA0A6':mcol(id);
+let OTRO='#9AA0A6';const colorOf=id=>id==='otro'?OTRO:mcol(id);
 const lget=id=>{try{return localStorage.getItem('nt:'+id)||''}catch(e){return ''}};
 const nk=t=>'p:'+nz((t.nombre||'')+(t.apellido||'')).replace(/\s+/g,'');
 const lnote=t=>{const o=lget(t.id),k=nk(t);if(o){const p=lget(k);lset(k,!p?o:p.includes(o)?p:p+'\n'+o);lset(t.id,'')}return lget(k)};
@@ -495,14 +495,20 @@ const telOk=v=>String(v||'').replace(/\D/g,'').length>=10;
 ['rn','ra','rt','rf','rh'].forEach(i=>$(i).addEventListener('input',mark));
 $('rt').addEventListener('change',()=>{$('rt').value=fmtTel($('rt').value);mark()});
 $('rp').onclick=()=>$('rp').classList.toggle('on');
+function dict(o){let want=true,acc='',sess='',any=false,fails=0,last=Date.now(),r;
+  const done=()=>{want=false;o.onDone(acc.trim(),any)};
+  r=new SR();r.lang='es-AR';r.interimResults=true;r.continuous=true;
+  r.onresult=e=>{any=true;sess=Array.from(e.results).map(x=>x[0].transcript).join(' ');o.onText((acc+' '+sess).trim())};
+  r.onerror=ev=>{const c=ev&&ev.error;if(c==='not-allowed'||c==='service-not-allowed'||c==='audio-capture'){want=false;any=true;r.onend=null;o.onFail()}};
+  r.onend=()=>{acc+=' '+sess;sess='';if(!want){o.onDone(acc.trim(),any);return}
+    const n=Date.now();fails=n-last<400?fails+1:0;last=n;if(fails>8){done();return}
+    try{r.start()}catch(_){setTimeout(()=>{try{r.start()}catch(e){done()}},120)}};
+  r.start();return{stop(){want=false;try{r.stop()}catch(_){}}}}
 $('mic').onclick=()=>{
   if(!SR){fallback();return}
-  if(live){wM=false;rec.stop();return}
-  try{rec=new SR();rec.lang='es-AR';rec.interimResults=false;rec.continuous=true;cM='';wM=true;
-    rec.onresult=e=>{got=true;for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)cM+=e.results[i][0].transcript+' '};
-    rec.onerror=ev=>{if(ev&&(ev.error==='no-speech'||ev.error==='aborted'))return;wM=false;got=true;fallback()};
-    rec.onend=()=>{if(wM){try{rec.start();return}catch(_){}}wM=false;live=false;$('mic').classList.remove('on');if(cM.trim())review(cM.trim());else if(!got)fallback()};
-    got=false;rec.start();live=true;$('mic').classList.add('on');$('cap').textContent='Escuchando…'}
+  if(live){rec.stop();return}
+  try{live=true;$('mic').classList.add('on');$('cap').textContent='Escuchando…';
+    rec=dict({onText:t=>{$('cap').textContent='Escuchando… '+t.slice(-70)},onDone:(t,a)=>{live=false;$('mic').classList.remove('on');if(t)review(t);else if(!a)fallback()},onFail:()=>fallback()})}
   catch(e){fallback()}
 };
 $('go').onclick=()=>{const v=$('txt').value.trim();if(v){review(v);$('txt').value=''}};
@@ -599,12 +605,10 @@ let nrec=null,nlive=false,ngot=false;
 function nkb(){nlive=false;$('ndic').classList.remove('on');$('ndic').innerHTML=MI+' Dictar';$('nhint').innerHTML='Acá el micrófono está bloqueado. Tocá la nota y usá el <b>micrófono de tu teclado</b>.';$('nta').focus()}
 $('ndic').onclick=()=>{
   if(!SR){nkb();return}
-  if(nlive){wN=false;nrec.stop();return}
-  try{nrec=new SR();nrec.lang='es-AR';nrec.interimResults=false;nrec.continuous=true;wN=true;
-    nrec.onresult=e=>{ngot=true;for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal){const v=$('nta').value;$('nta').value=(v&&!/\s$/.test(v)?v+' ':v)+e.results[i][0].transcript}};
-    nrec.onerror=ev=>{if(ev&&(ev.error==='no-speech'||ev.error==='aborted'))return;wN=false;ngot=true;nkb()};
-    nrec.onend=()=>{if(wN){try{nrec.start();return}catch(_){}}wN=false;nlive=false;$('ndic').classList.remove('on');$('ndic').innerHTML=MI+' Dictar';if(!ngot)nkb()};
-    ngot=false;nrec.start();nlive=true;$('ndic').classList.add('on');$('ndic').textContent='⏹ Escuchando…';$('nhint').textContent=''}
+  if(nlive){nrec.stop();return}
+  const b=$('nta').value,sp=b&&!/\s$/.test(b)?' ':'';
+  try{nlive=true;$('ndic').classList.add('on');$('ndic').textContent='⏹ Escuchando…';$('nhint').textContent='';
+    nrec=dict({onText:t=>{$('nta').value=b+sp+t},onDone:(t,a)=>{nlive=false;$('ndic').classList.remove('on');$('ndic').innerHTML=MI+' Dictar';$('nta').value=b+(t?sp+t:'');if(!a)nkb()},onFail:()=>nkb()})}
   catch(e){nkb()}
 };
 $('nfi').onchange=async e=>{const t=cur();if(!t.gen){$('nhint').textContent='Los archivos van en las Notas generales: las notas de sesión no se sincronizan.';e.target.value='';return}t.files=t.files||[];if(!window.uploadFile){$('nhint').textContent='Los archivos necesitan la agenda en línea.';return}$('nhint').textContent='Subiendo…';for(const f of [...e.target.files]){const x=await window.uploadFile(f);if(x)t.files.push(x)}e.target.value='';$('nhint').textContent='';drawFiles();(t.gen?saveG:saveT)(t)};
@@ -724,12 +728,9 @@ $('aq').onkeydown=e=>{if(e.key==='Enter')sendA()};
 function akb(){alive=false;$('amic').classList.remove('on');$('ahint').innerHTML='Acá el micrófono está bloqueado. Tocá el campo y usá el <b>micrófono de tu teclado</b>.';$('aq').focus()}
 $('amic').onclick=()=>{
   if(!SR){akb();return}
-  if(alive){wQ=false;arec.stop();return}
-  try{arec=new SR();arec.lang='es-AR';arec.interimResults=false;arec.continuous=true;cQ='';wQ=true;
-    arec.onresult=e=>{agot=true;for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)cQ+=e.results[i][0].transcript+' '};
-    arec.onerror=ev=>{if(ev&&(ev.error==='no-speech'||ev.error==='aborted'))return;wQ=false;agot=true;akb()};
-    arec.onend=()=>{if(wQ){try{arec.start();return}catch(_){}}wQ=false;alive=false;$('amic').classList.remove('on');if(cQ.trim()){$('aq').value=cQ.trim();sendA()}else if(!agot)akb()};
-    agot=false;arec.start();alive=true;$('amic').classList.add('on');$('ahint').textContent='Escuchando…'}
+  if(alive){arec.stop();return}
+  try{alive=true;$('amic').classList.add('on');$('ahint').textContent='Escuchando…';
+    arec=dict({onText:t=>{$('aq').value=t},onDone:(t,a)=>{alive=false;$('amic').classList.remove('on');if(t){$('aq').value=t;sendA()}else if(!a)akb()},onFail:()=>akb()})}
   catch(e){akb()}};
 
 /* ---------- Cuenta, sincronización y miembros ---------- */
@@ -749,10 +750,10 @@ function renderM(){
   if(me&&document.activeElement!==$('myname'))$('myname').value=mname[me.id]||'';
   $('mlist').innerHTML=members.length?members.map(m=>{const mine=me&&m.id===me.id,own=m.role==='owner';
     const st=own?'Dueño':m.removed?'Sin acceso':m.role==='viewer'?'Solo ver':'Mismos permisos que el dueño';
-    return `<div class="t" style="cursor:default"><span class="dot" style="background:${m.color}"></span><div style="flex:1;min-width:0"><span class="gt">${esc(mname[m.id]||'Miembro')}${mine?' (vos)':''}</span><div class="mut">${st}</div></div>${isAdm&&!own?`<button class="nb" data-m="${m.id}" data-a="rol">${m.removed?'Restaurar':m.role==='viewer'?'Dar permisos':'Solo ver'}</button>${m.removed?'':`<button class="nb empty0" data-m="${m.id}" data-a="del">Quitar</button>`}`:''}${(isAdm||mine)?`<div class="pal">${PAL.map(c=>`<i data-m="${m.id}" data-c="${c}" style="background:${c}"></i>`).join('')}</div>`:''}</div>`}).join(''):'<div class="empty">Iniciá sesión en Claude para ver y administrar a los miembros.</div>'}
+    return `<div class="t" style="cursor:default"><span class="dot" style="background:${m.color}"></span><div style="flex:1;min-width:0"><span class="gt">${esc(mname[m.id]||'Miembro')}${mine?' (vos)':''}</span><div class="mut">${st}</div></div>${isAdm&&!own?`<button class="nb" data-m="${m.id}" data-a="rol">${m.removed?'Restaurar':m.role==='viewer'?'Dar permisos':'Solo ver'}</button>${m.removed?'':`<button class="nb empty0" data-m="${m.id}" data-a="del">Quitar</button>`}`:''}${(isAdm||mine)?`<div class="pal">${PAL.map(c=>`<i data-m="${m.id}" data-c="${c}" style="background:${c}"></i>`).join('')}</div>`:''}</div>`}).join('')+(db&&(isAdm)?`<div class="t" style="cursor:default"><span class="dot" style="background:${OTRO}"></span><div style="flex:1;min-width:0"><span class="gt">Reservas por link</span><div class="mut">Color de los turnos que reservan solos</div></div><div class="pal">${PAL.map(c=>`<i data-m="otro" data-c="${c}" style="background:${c}"></i>`).join('')}</div></div>`:''):'<div class="empty">Iniciá sesión en Claude para ver y administrar a los miembros.</div>'}
 $('mlist').onclick=e=>{
   if(!db)return;
-  const c=e.target.closest('[data-c]');if(c){db.doc('members/'+c.dataset.m).update({color:c.dataset.c});return}
+  const c=e.target.closest('[data-c]');if(c){if(c.dataset.m==='otro'){OTRO=c.dataset.c;db.doc('config/otro').set({color:OTRO});render();renderM()}else db.doc('members/'+c.dataset.m).update({color:c.dataset.c});return}
   const b=e.target.closest('[data-a]');if(!b)return;const id=b.dataset.m,m=members.find(x=>x.id===id);
   if(b.dataset.a==='rol')db.doc('members/'+id).update(m.removed?{removed:false,role:'admin'}:{role:m.role==='viewer'?'admin':'viewer'});
   else ask('¿Quitar a '+(mname[id]||'este miembro')+' de la agenda?',()=>db.doc('members/'+id).update({removed:true,role:'viewer'}),'Quitar')};
