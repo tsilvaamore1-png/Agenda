@@ -499,9 +499,11 @@ $('rp').onclick=()=>$('rp').classList.toggle('on');
 function dict(o){let want=true,acc='',sess='',any=false,fails=0,last=Date.now(),r;
   const done=()=>{want=false;o.onDone(acc.trim(),any)};
   r=new SR();r.lang='es-AR';r.interimResults=true;r.continuous=false;
-  r.onresult=e=>{any=true;sess=Array.from(e.results).map(x=>x[0].transcript).join(' ');o.onText((acc+' '+sess).trim())};
+  const jn=(a,b)=>!b||a.toLowerCase().endsWith(b.toLowerCase())?a:(a+' '+b);
+  r.onresult=e=>{any=true;let out='';for(const x of e.results){const t=x[0].transcript.trim(),L=t.toLowerCase();if(!t)continue;if(!out||L.startsWith(out.toLowerCase()))out=t;else if(!out.toLowerCase().includes(L))out+=' '+t}
+    sess=out;o.onText(jn(acc,sess).trim())};
   r.onerror=ev=>{const c=ev&&ev.error;if(c==='not-allowed'||c==='service-not-allowed'||c==='audio-capture'){want=false;any=true;r.onend=null;o.onFail()}};
-  r.onend=()=>{acc+=' '+sess;sess='';if(!want){o.onDone(acc.trim(),any);return}
+  r.onend=()=>{acc=jn(acc,sess);sess='';if(!want){o.onDone(acc.trim(),any);return}
     const n=Date.now();fails=n-last<400?fails+1:0;last=n;if(fails>8){done();return}
     try{r.start()}catch(_){setTimeout(()=>{try{r.start()}catch(e){done()}},120)}};
   r.start();return{stop(){want=false;try{r.stop()}catch(_){}}}}
