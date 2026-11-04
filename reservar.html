@@ -15,11 +15,17 @@ button{font:inherit;color:inherit;cursor:pointer}.hd{display:flex;justify-conten
 .ch button{border:1px solid var(--line);background:var(--card);border-radius:18px;padding:10px 16px;font-weight:600}
 input{width:100%;background:var(--card);border:1px solid transparent;border-radius:12px;padding:14px;margin-bottom:10px;font:inherit;color:var(--fg);outline:none}input:focus{border-color:var(--y)}
 .pri{width:100%;height:52px;border:0;border-radius:26px;background:var(--y);color:#000;font-weight:700;margin-top:4px}.pri:disabled{opacity:.4}
+.mn{color:var(--mute);opacity:.7;font-size:12px;margin:-10px 0 14px}.ad{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin:22px 0 4px;opacity:.9}.ad span{color:var(--mute);font-size:12px;width:100%;text-align:center}.ad a{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:18px;padding:7px 12px;font-size:13px;color:var(--fg);text-decoration:none;background:none}.ad svg{flex:none}
 .er{color:#ff6b6b;min-height:20px;font-size:14px}.ok{text-align:center;padding:24px 0}.lk{width:100%;background:none;border:0;color:var(--mute);margin-top:8px;font-size:15px}
 </style></head><body><main>
 <div class="top"><div><h1>Reservar turno</h1><p class="s" id="s">Elegí un día con horarios disponibles.</p></div><button class="hoy" id="hoy">Hoy</button></div>
+<div class="mn">Agenda una o más sesiones</div>
 <div class="hd"><button class="ib" id="pv">‹</button><b id="mt"></b><button class="ib" id="nx">›</button></div>
-<div class="g" id="wk"></div><div class="g" id="gr"></div></main>
+<div class="g" id="wk"></div><div class="g" id="gr"></div>
+<div class="ad"><span>Escuchame en</span>
+<a href="https://open.spotify.com/show/033q0o4hy6NaY8OkVH50A2" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="12" fill="#1DB954"/><path d="M5.5 9c4.2-1.2 9.2-.9 13 1.4M6.3 12.6c3.5-1 7.4-.7 10.5 1.1M7 16c2.8-.7 5.8-.5 8.3.9" stroke="#000" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>Spotify</a>
+<a href="https://www.youtube.com/channel/UCaefsofUzaHDgBLeHJjg5hw" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18"><rect x="1" y="5" width="22" height="14" rx="4" fill="#F00"/><path d="M10 9l5 3-5 3z" fill="#fff"/></svg>YouTube</a>
+<a href="https://podcasts.apple.com/mx/podcast/claridad-en-proceso/id6797343653" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="12" fill="#A24BDB"/><circle cx="12" cy="9.5" r="2.2" fill="#fff"/><path d="M12 13c-1 0-1.6.6-1.6 1.5l.4 4c.1.6.6 1 1.2 1s1.1-.4 1.2-1l.4-4c0-.9-.6-1.5-1.6-1.5z" fill="#fff"/><path d="M7.7 10a4.3 4.3 0 018.6 0c0 1.5-.7 2.7-1.8 3.4M9.5 13.4C8.4 12.7 7.7 11.5 7.7 10" stroke="#fff" stroke-width="1.2" fill="none"/></svg>Apple Podcasts</a></div></main>
 <img class="lg" src="logo.jpg" width="1200" height="524" alt="Claridad en Proceso">
 <div id="ov"><div class="sh" id="sh"></div></div>
 <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -29,6 +35,7 @@ const MES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','se
 const sb=window.SUPABASE_URL?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
 const DEV=(()=>{try{let d=localStorage.getItem('dev');if(!d){d=(crypto.randomUUID?crypto.randomUUID():String(Math.random()).slice(2)+Date.now());localStorage.setItem('dev',d)}return d}catch(e){return ''}})();
 let days={},vy,vm,sel=null,hora=null,step=null,busy=false;
+const ftel=v=>{let d=v.replace(/\D/g,'');if(d.startsWith('549'))d=d.slice(3);else if(d.startsWith('54'))d=d.slice(2);d=d.replace(/^0+/,'');if(d.length===12&&d.startsWith('11')&&d.slice(2,4)==='15')d=d.slice(0,2)+d.slice(4);if(d.length!==10)return v.trim();return d.startsWith('11')?d.slice(0,2)+' '+d.slice(2,6)+'-'+d.slice(6):d.slice(0,3)+' '+d.slice(3,6)+'-'+d.slice(6)};
 const dt=k=>new Date(k+'T00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
 async function load(){
   if(!sb||!C)return;const r=await sb.rpc('public_slots',{code:C});if(r.error||!r.data)return;
@@ -59,10 +66,10 @@ $('sh').onclick=async e=>{
   if(e.target.id==='bk'){sheet();return}
   if(e.target.id==='cl'){closeS();return}
   if(e.target.id!=='go'||busy)return;
-  const n=$('fn').value.trim(),a=$('fa').value.trim();if(n.length<2||a.length<2){$('er').textContent='Completá nombre y apellido.';return}
+  const cp=s=>s.trim().replace(/(^|[\s\-'])(\p{L})/gu,(m,x,y)=>x+y.toUpperCase()),n=cp($('fn').value),a=cp($('fa').value);if(n.length<2||a.length<2){$('er').textContent='Completá nombre y apellido.';return}
   if($('ft').value.replace(/\D/g,'').length<8){$('er').textContent='Ingresá un teléfono válido.';return}
   busy=true;$('go').disabled=true;
-  const r=await sb.rpc('public_book',{code:C,p_nombre:n,p_apellido:a,p_tel:$('ft').value.trim(),p_fecha:sel,p_hora:hora,p_dev:DEV}),d=r.data||{};busy=false;
+  const r=await sb.rpc('public_book',{code:C,p_nombre:n,p_apellido:a,p_tel:ftel($('ft').value),p_fecha:sel,p_hora:hora,p_dev:DEV}),d=r.data||{};busy=false;
   if(d.ok){step='ok';$('sh').innerHTML=`<div class="ok"><div style="font-size:42px">✓</div><h2>${d.estado==='pendiente'?'Solicitud enviada':'¡Turno agendado!'}</h2><p class="s">${d.estado==='pendiente'?'Tu turno queda pendiente de aprobación.':dt(sel)+' a las '+hora}</p><button class="pri" id="cl">Listo</button></div>`;load();return}
   const M={ocupado:'Ese horario se acaba de ocupar. Elegí otro.',limite:'Ya reservaste un turno con este link.',cerrado:'Las reservas no están disponibles por ahora.',tel:'Ingresá un teléfono válido.',datos:'Revisá nombre y apellido.'};
   await load();if(d.error==='ocupado'){hora=null;sheet(M.ocupado)}else{$('go').disabled=false;$('er').textContent=M[d.error]||'No se pudo agendar. Probá de nuevo.'}};

@@ -3,7 +3,7 @@
 if(!window.SUPABASE_URL||!window.SUPABASE_KEY){console.warn('Falta completar config.js');return}
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let S=null,ready=null;const cache=new Map(),ls=[];
-const notify=()=>ls.forEach(f=>f());
+let nT=0;const notify=()=>{if(nT)return;nT=setTimeout(()=>{nT=0;ls.forEach(f=>f())},40)};
 const sub=f=>{ls.push(f);f();return()=>ls.splice(ls.indexOf(f),1)};
 const up=(p,o)=>sb.from('kv').upsert({agenda_id:S.agenda,path:p,data:o,updated_at:new Date().toISOString()}).then(r=>{if(r.error)console.error(r.error)});
 const snapDoc=p=>({exists:cache.has(p),id:p.split('/').pop(),data:()=>cache.get(p)});
@@ -76,7 +76,11 @@ async function pick(u){
 
 async function init(){
   const u=await login();if(REC){await newPass(false);history.replaceState({},'',location.pathname)}await pick(u);
-  ((await sb.from('kv').select('path,data').eq('agenda_id',S.agenda).limit(10000)).data||[]).forEach(r=>cache.set(r.path,r.data));
+  ((await sb.from('kv').select('path,data').eq('agenda_id',S.agenda).not('path','like','hist/%').limit(10000)).data||[]).forEach(r=>cache.set(r.path,r.data));
+  sb.from('kv').select('path,data').eq('agenda_id',S.agenda).like('path','hist/%').order('updated_at',{ascending:false}).limit(150).then(r=>{(r.data||[]).forEach(x=>cache.set(x.path,x.data));notify()});
+  const refresh=async like=>{if(!S)return;let q=sb.from('kv').select('path,data').eq('agenda_id',S.agenda);q=like?q.like('path',like):q.not('path','like','hist/%');const r=await q.limit(10000);if(r.error||!r.data)return;
+    const seen=new Set(r.data.map(x=>x.path));for(const k of [...cache.keys()])if((like?k.startsWith('turnos/'):!k.startsWith('hist/'))&&!seen.has(k))cache.delete(k);r.data.forEach(x=>cache.set(x.path,x.data));notify()};
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});setInterval(()=>{if(!document.hidden)refresh('turnos/%')},20000);
   sb.channel('kv-'+S.agenda).on('postgres_changes',{event:'*',schema:'public',table:'kv',filter:'agenda_id=eq.'+S.agenda},p=>{
     if(p.eventType==='DELETE'){if(!p.old.agenda_id||p.old.agenda_id===S.agenda)cache.delete(p.old.path)}else cache.set(p.new.path,p.new.data);
     notify()}).subscribe()}

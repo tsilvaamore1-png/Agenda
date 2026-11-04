@@ -97,7 +97,7 @@ input:focus{border-color:var(--y)}
 .dlg p{margin:0 0 16px;font-size:17px}
 .t{flex-wrap:wrap;cursor:pointer}
 .t.open{outline:2px solid var(--y);outline-offset:-2px}
-.t .nb{margin-left:auto;border:0;background:var(--bg);border-radius:14px;padding:7px 12px;font-size:13px;cursor:pointer;font-weight:600}
+.t>b{flex:none}.t>span:not(.gt){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.t{min-height:62px}.t .nb{flex:none;margin-left:auto;border:0;background:var(--bg);border-radius:14px;padding:7px 12px;font-size:13px;cursor:pointer;font-weight:600}
 .t .nb.empty0{color:var(--mute);font-weight:400}
 .t .ac{display:flex;gap:8px;width:100%}
 .t .ac button{flex:1;height:40px;border-radius:20px;border:1px solid var(--line);background:none;cursor:pointer;font-weight:600}
@@ -345,10 +345,10 @@ function render(){
   if(VM==='m'){const off=(new Date(vy,vm,1).getDay()+6)%7;start=new Date(vy,vm,1-off)}
   else{const s0=fmt(sel);start=new Date(s0);start.setDate(s0.getDate()-(s0.getDay()+6)%7);N=7;ws=key(start);const e=new Date(start);e.setDate(e.getDate()+6);we=key(e)}
   $('cal').style.display=VM==='d'?'none':'';$('vsw').textContent=VM==='m'?'Mes':VM==='w'?'Semana':'Día';
-  let h='';
+  let h='';const cm={};turnos.forEach(t=>{cm[t.fecha]=(cm[t.fecha]||0)+1});
   for(let i=0;i<N;i++){
     const d=new Date(start);d.setDate(start.getDate()+i);const k=key(d);
-    const c=turnos.filter(t=>t.fecha===k).length;
+    const c=cm[k]||0;
     h+=`<button class="cell${VM==='m'&&d.getMonth()!==vm?' out':''}${k===key(today)?' today':''}${k===sel?' sel':''}${blocked(k)?' blk':''}" data-k="${k}"><span class="n">${d.getDate()}</span><span class="cnt${c?'':' none'}">${c||''}</span></button>`;
   }
   $('grid').innerHTML=h;
@@ -407,7 +407,7 @@ function extractTel(raw){
   const tk=[];raw.replace(/\S+/g,(m,i)=>{tk.push({t:nz(m).trim().replace(/^[.,;:()¿¡"]+|[.,;:()?!"]+$/g,''),i:i,e:i+m.length});return m});
   let runs=[],cur=[];
   for(let i=0;i<tk.length;i++){const t=tk[i].t;let it=null;
-    if(/^\+?[\d().\-]+$/.test(t)&&/\d/.test(t))it={a:i,b:i,d:t.replace(/\D/g,'')};
+    if(/^\+?[\d().\-:]+$/.test(t)&&/\d/.test(t))it={a:i,b:i,d:t.replace(/\D/g,'')};
     else if(NT.has(t)&&tk[i+1]&&tk[i+1].t==='y'&&tk[i+2]&&NW[tk[i+2].t]&&NW[tk[i+2].t].length===1&&NW[tk[i+2].t]!=='0'){it={a:i,b:i+2,d:String(+NW[t]+ +NW[tk[i+2].t])};i+=2}
     else if(Object.prototype.hasOwnProperty.call(NW,t))it={a:i,b:i,d:NW[t]};
     if(it)cur.push(it);else{if(cur.length)runs.push(cur);cur=[]}}
@@ -744,7 +744,9 @@ let db=null,me=null,members=[],mname={},canW=true,isAdm=false;
 const mcol=id=>{const m=members.find(x=>x.id===id);return m?m.color:'var(--y)'};
 const gid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const strip=t=>({...t});
-function saveT(t){if(!turnos.includes(t))turnos.push(t);if(db)db.doc('turnos/'+t.id).set(strip(t)).catch(()=>{})}
+const capName=s=>String(s||'').trim().replace(/(^|[\s\-'])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase());
+const ftel=v=>{try{return v?(fmtTel(v)||v):v}catch(e){return v}};
+function saveT(t){t.nombre=capName(t.nombre);t.apellido=capName(t.apellido);if(t.tel)t.tel=ftel(t.tel);if(!turnos.includes(t))turnos.push(t);if(db)db.doc('turnos/'+t.id).set(strip(t)).catch(()=>{})}
 function delT(id){turnos=turnos.filter(x=>x.id!==id);if(db)db.doc('turnos/'+id).delete().catch(()=>{})}
 function saveG(g){if(!gnotes.includes(g))gnotes.push(g);if(db)db.doc('gnotes/'+g.id).set(strip(g)).catch(()=>{})}
 function delG(g){if(!g)return;gnotes=gnotes.filter(x=>x!==g);if(db)db.doc('gnotes/'+g.id).delete().catch(()=>{})}
@@ -780,7 +782,7 @@ $('goH').onclick=()=>sub('H');$('goP').onclick=()=>sub('P');$('sback').onclick=(
       await db.doc('members/'+me.id).set({color:PAL[[...me.id].reduce((a,c)=>a+c.charCodeAt(0),0)%PAL.length],name:nmv,role:owner?'owner':'admin',joined:Date.now()});
       if(!owner){const mt=await db.doc('meta/main').get(),on=mt.exists&&mt.data().ownerName;
         $('wlt').textContent='Te has unido a la agenda de '+(on||'su dueño');$('wl').classList.add('on')}}else if(!old.name)await db.doc('members/'+me.id).update({name:nmv});
-    db.collection('turnos').onSnapshot(s=>{turnos=s.docs.map(x=>({...x.data(),files:x.data().files||[]}));render()});
+    db.collection('turnos').onSnapshot(s=>{turnos=s.docs.map(x=>{const d=x.data();return{...d,nombre:capName(d.nombre),apellido:capName(d.apellido),tel:ftel(d.tel),files:d.files||[]}});render()});
     db.collection('gnotes').onSnapshot(s=>{gnotes=s.docs.map(x=>({...x.data(),files:x.data().files||[]}));renderN()});
     db.doc('config/main').onSnapshot(s=>{if(s.exists){const c=JSON.parse(JSON.stringify(s.data()));cfg.horas=c.horas||cfg.horas;cfg.blocks=c.blocks||[];renderS();render()}else if(canW)saveCfg()});
     db.collection('members').onSnapshot(async s=>{
