@@ -2,7 +2,7 @@
 (()=>{
 const z=n=>String(n).padStart(2,'0');
 let bk={enabled:false,manual:false,max:2},hist=[],fich={},fsel=null,fq='';
-const TT={H:'Horarios',P:'Permisos',R:'Reservas por link',Rm:'Recordatorios',F:'Fichas',Hi:'Historial',Sy:'Sincronizaci\u00f3n',IO:'Importar y exportar',C:'Cuenta'};
+const TT={H:'Horarios',P:'Permisos',R:'Reservas por link',Rm:'Recordatorios',F:'Fichas',Hi:'Historial',IO:'Importar y exportar',C:'Cuenta'};
 const SHOW={H:()=>renderS(),P:()=>renderM(),R:()=>renderR(),Rm:()=>renderRm(),F:()=>renderF(),Hi:()=>renderHi(),C:()=>renderC()};
 window.sub=n=>{$('sMenu').style.display=n==='m'?'':'none';Object.keys(TT).forEach(k=>$('s'+k).style.display=n===k?'':'none');
   $('sback').style.display=n==='m'?'none':'';$('sttl').textContent=TT[n]||'Ajustes';if(SHOW[n])SHOW[n]()};
@@ -15,8 +15,6 @@ addScreen('R',`<div class="rv"><div class="r"><label ${LW}>Aprobar cada reserva 
 addScreen('Rm','<div id="rmBody"></div>');
 addScreen('F','<div id="fBody"></div>');
 addScreen('Hi','<div id="hiBody"></div>');
-addScreen('Sy','<div class="heard" style="white-space:normal;margin:0 0 12px">La sincronizaci\u00f3n autom\u00e1tica con Google Calendar todav\u00eda no est\u00e1 disponible: necesita una conexi\u00f3n con Google que hay que armar aparte. Por ahora pod\u00e9s pasar tu agenda a cualquier calendario as\u00ed:</div><button class="menub" id="syD">Descargar calendario (.ics)<span>\u2193</span></button><div class="heard" style="white-space:normal;margin:12px 0">En Google Calendar (desde la compu): Configuraci\u00f3n > Importar y exportar > Importar, y eleg\u00ed el archivo. Apple Calendar y Outlook lo abren directo. Es una copia de hoy: no se actualiza sola.</div>');
-$('syD').onclick=()=>$('exI').click();
 addScreen('IO',`<h2>Exportar</h2><button class="menub" id="exX">Excel (.xlsx)<span>\u2193</span></button><button class="menub" id="exI">Calendario (.ics)<span>\u2193</span></button><button class="menub" id="exJ">Copia de la agenda (.json)<span>\u2193</span></button><h2>Importar</h2><button class="menub" id="imB">Elegir archivo<span>\u2191</span></button><input type="file" id="imF" accept=".xlsx,.xls,.csv,.ics,.json" hidden><div class="heard" id="imM" style="white-space:normal;margin-top:8px">Excel o CSV con columnas Nombre, Apellido, Fecha, Hora y Primera sesi\u00f3n (S\u00ed o vac\u00edo); archivo .ics de Google Calendar u otro calendario; o una copia .json de esta app.</div>`);
 addScreen('C','<div class="rv"><div class="r"><label ${LW}>Email</label><span id="cMail" style="word-break:break-all;text-align:right"></span></div><div class="r"><label ${LW}>Tipo de cuenta</label><span id="cRol"></span></div></div><div class="heard" style="white-space:normal;margin:8px 0 12px">Por seguridad la contrase\u00f1a no se puede ver: se guarda cifrada y nadie la conoce, ni siquiera yo. Si no te acordás, pod\u00e9s crear una nueva.</div><button class="menub" id="cPw">Cambiar contrase\u00f1a<span>\u203a</span></button><button class="menub" id="cOut">Cerrar sesi\u00f3n<span>\u203a</span></button><button class="menub" id="cDel" style="color:#ff6b6b">Eliminar mi cuenta<span>\u203a</span></button>');
 {const mb=[...$('sMenu').children].find(b=>/^Cuenta/.test(b.textContent));if(mb)mb.innerHTML='Cuenta<small id="accMail" style="color:var(--mute);margin:0 auto 0 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%"></small><span>\u203a</span>'}
