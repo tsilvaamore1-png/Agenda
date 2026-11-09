@@ -11,7 +11,7 @@ function addScreen(k,html){const b=document.createElement('button');b.className=
   const d=document.createElement('div');d.id='s'+k;d.style.display='none';d.innerHTML=html;$('pgS').appendChild(d)}
 const LW='style="width:auto"',LK='style="width:100%;background:var(--card);border:0;border-radius:12px;padding:13px;margin-bottom:10px;color:var(--fg)"';
 const CH=on=>'border:1px solid '+(on?'var(--y)':'var(--line)')+';background:'+(on?'var(--y)':'var(--card)')+';color:'+(on?'var(--yfg)':'var(--fg)')+';border-radius:18px;padding:10px 16px;font:inherit;font-weight:600;margin:0 8px 8px 0;cursor:pointer';
-addScreen('R',`<div class="rv"><div class="r"><label ${LW}>Aprobar cada reserva a mano</label><button class="sw" id="bkMan" aria-label="Aprobaci\u00f3n manual"></button></div></div><h2>Hasta cuándo se puede reservar</h2><div class="rv"><div class="r"><label ${LW}>Máximo</label><input type="number" id="bkN" min="1" inputmode="numeric"><select id="bkU" style="background:none;border:0;color:var(--fg);font:inherit;font-size:17px;font-weight:600;outline:none;padding:6px 0 6px 6px"><option value="d">días</option><option value="m">meses</option><option value="y">años</option></select></div></div><div class="heard" id="bkMaxT" style="white-space:normal;margin:8px 0 12px"></div><h2>Link general</h2><div class="rv"><div class="r"><label ${LW}>Activar</label><button class="sw" id="bkOn" aria-label="Activar"></button></div></div><div class="heard" style="white-space:normal;margin:8px 0 12px">Sin l\u00edmite de reservas. Pide nombre, apellido y tel\u00e9fono. Quien lo abre no inicia sesi\u00f3n ni ve datos de nadie.</div><input type="text" id="bkLink" readonly ${LK}><button class="newn" id="bkCopy" style="background:var(--y);color:var(--yfg);border:0">Copiar link</button><h2>Link de un solo uso</h2><div class="rv"><div class="r"><label ${LW}>Activar</label><button class="sw" id="bkOnceOn" aria-label="Activar link de un solo uso"></button></div></div><div class="heard" style="white-space:normal;margin:8px 0 12px">Pod\u00e9s mandarlo a mucha gente: cada persona puede reservar una sola sesi\u00f3n (se controla por tel\u00e9fono, nombre y dispositivo). Si lo cambi\u00e1s, el anterior deja de funcionar y todos pueden volver a usar el nuevo.</div><input type="text" id="bkOLink" readonly ${LK}><button class="newn" id="bkOCopy" style="background:var(--y);color:var(--yfg);border:0">Copiar link</button><button class="menub" id="bkRot" style="margin-top:10px">Cambiar link<span>\u203a</span></button><h2>Pendientes de aprobar</h2><div id="bkPend"></div>`);
+addScreen('R',`<div class="rv"><div class="r"><label ${LW}>Aprobar cada reserva a mano</label><button class="sw" id="bkMan" aria-label="Aprobaci\u00f3n manual"></button></div></div><h2>Hasta cuándo se puede reservar</h2><div class="rv"><div class="r"><label ${LW}>Máximo</label><input type="number" id="bkN" min="1" inputmode="numeric"><select id="bkU" style="background:none;border:0;color:var(--fg);font:inherit;font-size:17px;font-weight:600;outline:none;padding:6px 0 6px 6px"><option value="d">días</option><option value="m">meses</option><option value="y">años</option></select></div></div><div class="heard" id="bkMaxT" style="white-space:normal;margin:8px 0 12px"></div><h2>Link general</h2><div class="rv"><div class="r"><label ${LW}>Activar</label><button class="sw" id="bkOn" aria-label="Activar"></button></div></div><div class="heard" style="white-space:normal;margin:8px 0 12px">Sin l\u00edmite de reservas. Pide nombre, apellido y tel\u00e9fono. Quien lo abre no inicia sesi\u00f3n ni ve datos de nadie.</div><input type="text" id="bkLink" readonly ${LK}><button class="newn" id="bkCopy" style="background:var(--y);color:var(--yfg);border:0">Copiar link</button><button class="menub" id="bkRotG" style="margin-top:10px">Cambiar link<span>\u203a</span></button><h2>Link de un solo uso</h2><div class="rv"><div class="r"><label ${LW}>Activar</label><button class="sw" id="bkOnceOn" aria-label="Activar link de un solo uso"></button></div></div><div class="heard" style="white-space:normal;margin:8px 0 12px">Pod\u00e9s mandarlo a mucha gente: cada persona puede reservar una sola sesi\u00f3n (se controla por tel\u00e9fono, nombre y dispositivo). Si lo cambi\u00e1s, el anterior deja de funcionar y todos pueden volver a usar el nuevo.</div><input type="text" id="bkOLink" readonly ${LK}><button class="newn" id="bkOCopy" style="background:var(--y);color:var(--yfg);border:0">Copiar link</button><button class="menub" id="bkRot" style="margin-top:10px">Cambiar link<span>\u203a</span></button><h2>Pendientes de aprobar</h2><div id="bkPend"></div>`);
 addScreen('Rm','<div id="rmBody"></div>');
 addScreen('F','<div id="fBody"></div>');
 addScreen('Hi','<div id="hiBody"></div>');
@@ -26,10 +26,13 @@ const logH=(t,x)=>{try{if(db&&me){const id=gid();Promise.resolve(db.doc('hist/'+
 const _sT=saveT,_dT=delT;
 window.saveT=t=>{const nw=!turnos.includes(t);_sT(t);logH((nw?'Agend\u00f3':'Modific\u00f3')+' turno de '+t.nombre+' '+t.apellido+' ('+lab(t)+')')};
 window.delT=id=>{const t=turnos.find(x=>x.id===id);_dT(id);if(t)logH('Borr\u00f3 turno de '+t.nombre+' '+t.apellido+' ('+lab(t)+')',{del:{...t}})};
+window.saveMany=list=>{if(!list.length)return;list.forEach(t=>{t.nombre=capName(t.nombre);t.apellido=capName(t.apellido);if(t.tel)t.tel=ftel(t.tel);if(!turnos.includes(t))turnos.push(t)});tv++;
+  if(db&&db.setMany)db.setMany(list.map(t=>['turnos/'+t.id,{...t}])).catch(err=>console.error(err));
+  logH(list.length>1?'Agend\u00f3 '+list.length+' turnos de '+list[0].nombre+' '+list[0].apellido+' (desde '+lab(list[0])+')':'Agend\u00f3 turno de '+list[0].nombre+' '+list[0].apellido+' ('+lab(list[0])+')')};
 const _r=render,_l=legend;
-window.legend=()=>{_l();if(db&&turnos.some(t=>t.by==='otro'))$('leg').insertAdjacentHTML('beforeend','<span><i class="dot" style="display:inline-block;vertical-align:-2px;background:'+OTRO+'"></i> Otro</span>')};
+window.legend=()=>{_l();if(db&&!LOAD&&!LERR&&turnos.some(t=>t.by==='otro'))$('leg').insertAdjacentHTML('beforeend','<span><i class="dot" style="display:inline-block;vertical-align:-2px;background:'+sc(OTRO)+'"></i> Otro</span>')};
 window.render=()=>{_r();legend();if($('sF').style.display!=='none'&&!document.activeElement.matches('#fTel'))renderF();if($('sR').style.display!=='none')renderR()};
-window.renderHi=()=>{$('hiBody').innerHTML=hist.length?hist.map(h=>{const d=new Date(h.ts);return `<div class="t" style="cursor:default"><div style="flex:1;min-width:0"><span style="white-space:normal">${esc(h.text)}</span><div class="mut">${d.toLocaleDateString('es-AR',{day:'numeric',month:'short'})} ${d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})} \u00b7 ${h.by==='otro'?'Otro (link)':esc(mname[h.by]||'Miembro')}</div></div>${h.del&&canW?(h.restored?'<small>Restaurado</small>':`<button class="nb" data-rs="${h.id}">Restaurar</button>`):(/^Borr/.test(h.text)?'<small>No restaurable</small>':'')}</div>`}).join('')+'<div class="mut" style="text-align:center;padding:14px">Versi\u00f3n 31-oct-d</div>':'<div class="empty">Sin cambios registrados</div>'};
+window.renderHi=()=>{$('hiBody').innerHTML=hist.length?hist.map(h=>{const d=new Date(h.ts);return `<div class="t" style="cursor:default"><div style="flex:1;min-width:0"><span style="white-space:normal">${esc(h.text)}</span><div class="mut">${d.toLocaleDateString('es-AR',{day:'numeric',month:'short'})} ${d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})} \u00b7 ${h.by==='otro'?'Otro (link)':esc(mname[h.by]||'Miembro')}</div></div>${h.del&&canW?(h.restored?'<small>Restaurado</small>':`<button class="nb" data-rs="${esc(h.id)}">Restaurar</button>`):(/^Borr/.test(h.text)?'<small>No restaurable</small>':'')}</div>`}).join('')+'<div class="mut" style="text-align:center;padding:14px">Versi\u00f3n 8-nov-a'+(window.__T&&window.__T.listo?'<br>Arranque: '+(window.__T.listo/1000).toFixed(1)+' s (sesi\u00f3n '+(window.__T.sesion/1000).toFixed(1)+' \u00b7 agenda '+(window.__T.agenda/1000).toFixed(1)+' \u00b7 turnos '+(window.__T.turnos/1000).toFixed(1)+')':'')+'</div>':'<div class="empty">Sin cambios registrados</div>'};
 
 $('hiBody').onclick=e=>{const b=e.target.closest('[data-rs]');if(!b)return;const h=hist.find(x=>x.id===b.dataset.rs);if(!h||!h.del||h.restored)return;
   const t={...h.del},go=()=>{saveT(t);try{db.doc('hist/'+h.id).update({restored:true})}catch(err){}render()};
@@ -41,7 +44,7 @@ window.renderR=()=>{if(document.activeElement!==$('bkN'))$('bkN').value=bk.maxN|
   $('bkOn').classList.toggle('on',!!bk.enabled);$('bkMan').classList.toggle('on',!!bk.manual);$('bkOnceOn').classList.toggle('on',!!bk.onceEnabled);
   $('bkLink').value=window.PUBLIC_LINK||'(disponible al iniciar sesi\u00f3n)';$('bkOLink').value=window.ONCE_LINK||'(disponible al iniciar sesi\u00f3n)';
   const p=turnos.filter(t=>t.estado==='pendiente').sort((a,b)=>(a.fecha+a.hora<b.fecha+b.hora)?-1:1);
-  $('bkPend').innerHTML=p.length?p.map(t=>`<div class="t" style="cursor:default"><div style="flex:1;min-width:0"><span class="gt">${esc(t.nombre+' '+t.apellido)}</span><div class="mut">${lab(t)}</div></div><button class="nb" data-ok="${t.id}">Aprobar</button><button class="nb empty0" data-no="${t.id}">Rechazar</button></div>`).join(''):'<div class="empty">Sin reservas pendientes</div>'};
+  $('bkPend').innerHTML=p.length?p.map(t=>`<div class="t" style="cursor:default"><div style="flex:1;min-width:0"><span class="gt">${esc(t.nombre+' '+t.apellido)}</span><div class="mut">${lab(t)}</div></div><button class="nb" data-ok="${esc(t.id)}">Aprobar</button><button class="nb empty0" data-no="${esc(t.id)}">Rechazar</button></div>`).join(''):'<div class="empty">Sin reservas pendientes</div>'};
 $('bkOn').onclick=()=>{bk.enabled=!bk.enabled;saveBk();renderR()};
 const maxLim={d:1095,m:36,y:3};
 const maxTxt=()=>{const n=bk.maxN||60,u=bk.maxU||'d',d=new Date(today.getTime());if(u==='m')d.setMonth(d.getMonth()+n);else if(u==='y')d.setFullYear(d.getFullYear()+n);else d.setDate(d.getDate()+n);$('bkMaxT').textContent='Se puede reservar hasta el '+d.toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'})+'. Vale para los dos links.'};
@@ -52,6 +55,7 @@ $('bkOnceOn').onclick=()=>{bk.onceEnabled=!bk.onceEnabled;saveBk();renderR()};
 const cp=(b,i)=>$(b).onclick=async()=>{const x=$(i);try{await navigator.clipboard.writeText(x.value)}catch(err){x.select();document.execCommand('copy')}$(b).textContent='\u00a1Copiado!';setTimeout(()=>$(b).textContent='Copiar link',1500)};
 cp('bkCopy','bkLink');cp('bkOCopy','bkOLink');
 $('bkRot').onclick=()=>ask('Si cambi\u00e1s el link, el anterior deja de funcionar. \u00bfCambiarlo?',async()=>{await(window.rotateOnce&&window.rotateOnce());renderR()},'Cambiar');
+$('bkRotG').onclick=()=>ask('Si cambi\u00e1s el link general, el anterior deja de funcionar. \u00bfCambiarlo?',async()=>{await(window.rotatePublic&&window.rotatePublic());renderR()},'Cambiar');
 $('bkPend').onclick=e=>{const o=e.target.closest('[data-ok]'),n=e.target.closest('[data-no]');
   if(o){const t=turnos.find(x=>x.id===o.dataset.ok);if(t)approveT(t)}
   if(n)delT(n.dataset.no)};
@@ -66,7 +70,7 @@ window.renderF=()=>{
   if(!p){
     if(!$('fQ'))$('fBody').innerHTML='<input type="search" id="fQ" placeholder="Buscar por nombre" autocomplete="off" value="'+esc(fq)+'" style="width:100%;background:var(--card);border:1px solid transparent;border-radius:12px;padding:13px;margin-bottom:10px;color:var(--fg);font:inherit;outline:none"><div id="fList"></div>';
     const q=nz(fq).split(/\s+/).filter(Boolean),vis=ps.filter(p=>{const n=nz(p.nombre+' '+p.apellido);return q.every(x=>n.includes(x))});
-    $('fList').innerHTML=vis.length?vis.map(p=>`<div class="t" data-f="${p.k}"><div style="flex:1;min-width:0"><span class="gt">${esc(p.nombre+' '+p.apellido)}</span><div class="mut">${p.ts.length} ${p.ts.length>1?'sesiones':'sesi\u00f3n'}</div></div><span style="color:var(--mute)">\u203a</span></div>`).join(''):'<div class="empty">'+(ps.length?'Sin resultados':'Todav\u00eda no hay consultantes')+'</div>';return}
+    $('fList').innerHTML=vis.length?vis.slice(0,200).map(p=>`<div class="t" data-f="${p.k}"><div style="flex:1;min-width:0"><span class="gt">${esc(p.nombre+' '+p.apellido)}</span><div class="mut">${p.ts.length} ${p.ts.length>1?'sesiones':'sesi\u00f3n'}</div></div><span style="color:var(--mute)">\u203a</span></div>`).join('')+(vis.length>200?'<div class="empty">Mostrando 200 de '+vis.length+'. Escrib\u00ed para filtrar.</div>':''):'<div class="empty">'+(ps.length?'Sin resultados':'Todav\u00eda no hay consultantes')+'</div>';return}
   const f=fich[fsel]||{},ts=p.ts.slice().sort((a,b)=>(b.fecha+b.hora<a.fecha+a.hora)?-1:1),tel=f.tel||(ts.find(t=>t.tel)||{}).tel||'',first=p.ts.map(t=>t.fecha).sort()[0],d=new Date(),n=key(d)+' '+z(d.getHours())+':'+z(d.getMinutes());
   $('fBody').innerHTML=`<button class="hoy" id="fBack">\u2039 Todas las fichas</button><h2 style="color:var(--fg);font-size:22px;margin:14px 0 8px;text-transform:none">${esc(p.nombre+' '+p.apellido)}</h2><div class="rv"><div class="r"><label>Tel\u00e9fono</label><input type="text" id="fTel" inputmode="tel" value="${esc(tel)}" placeholder="Agregar"></div><div class="r"><label ${LW}>Primera sesi\u00f3n</label><span>${fS(first)}</span></div><div class="r"><label>Frecuencia</label><span>${freq(p.ts)}</span></div></div><h2>Historial de sesiones</h2>`+ts.map(t=>{const st=t.estado==='pendiente'?'Por aprobar':(t.fecha+' '+t.hora<n?'Realizada':'Pendiente');return `<div class="t" style="cursor:default"><b style="border-left-color:${colorOf(t.by)}">${t.hora}</b><span>${fS(t.fecha)}</span><small class="mut" style="margin-left:auto">${st}</small></div>`}).join('')};
 window.fichaHTML=t=>{const k=fk(t),ts=turnos.filter(x=>fk(x)===k).sort((a,b)=>(a.fecha+a.hora<b.fecha+b.hora)?-1:1),f=fich[k]||{},tel=f.tel||(ts.find(x=>x.tel)||{}).tel||'',d=new Date(),n=key(d)+' '+z(d.getHours())+':'+z(d.getMinutes());
@@ -80,10 +84,10 @@ $('fBody').onchange=e=>{if(e.target.id==='fTel'&&db&&fsel)db.doc('fichas/'+fsel)
 const dl=(n,b)=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click()};
 const sorted=()=>turnos.slice().sort((a,b)=>(a.fecha+a.hora<b.fecha+b.hora)?-1:1);
 const msg=t=>$('imM').textContent=t;
-$('exX').onclick=()=>{if(!window.XLSX){msg('No se pudo cargar el m\u00f3dulo de Excel (revis\u00e1 tu conexi\u00f3n).');return}
+$('exX').onclick=async()=>{msg('Preparando…');try{await loadX()}catch(err){msg('No se pudo cargar el m\u00f3dulo de Excel (revis\u00e1 tu conexi\u00f3n).');return}msg('');
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(sorted().map(t=>({Nombre:t.nombre,Apellido:t.apellido,Fecha:t.fecha,Hora:t.hora,'Primera sesi\u00f3n':t.primera?'S\u00ed':'',Estado:t.estado==='pendiente'?'Por aprobar':'Confirmado'}))),'Turnos');XLSX.writeFile(wb,'agenda.xlsx')};
 $('exI').onclick=()=>{const st=new Date().toISOString().replace(/[-:]|\.\d{3}/g,''),L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Agenda//ES'];
-  sorted().forEach(t=>{const e=mins(t.hora)+60;L.push('BEGIN:VEVENT','UID:'+t.id+'@agenda','DTSTAMP:'+st,'DTSTART:'+t.fecha.replace(/-/g,'')+'T'+t.hora.replace(':','')+'00','DTEND:'+t.fecha.replace(/-/g,'')+'T'+z(Math.floor(e/60)%24)+z(e%60)+'00','SUMMARY:Sesi\u00f3n: '+(t.nombre+' '+t.apellido).trim().replace(/,/g,'\\,'),'END:VEVENT')});
+  sorted().forEach(t=>{const e=mins(t.hora)+60;L.push('BEGIN:VEVENT','UID:'+t.id+'@agenda','DTSTAMP:'+st,'DTSTART:'+t.fecha.replace(/-/g,'')+'T'+t.hora.replace(':','')+'00','DTEND:'+t.fecha.replace(/-/g,'')+'T'+z(Math.floor(e/60)%24)+z(e%60)+'00','SUMMARY:Sesi\u00f3n: '+(t.nombre+' '+t.apellido).trim().replace(/[\\;,]/g,m=>'\\'+m).replace(/[\r\n]+/g,' '),'END:VEVENT')});
   L.push('END:VCALENDAR');dl('agenda.ics',new Blob([L.join('\r\n')],{type:'text/calendar'}))};
 $('exJ').onclick=()=>dl('agenda.json',new Blob([JSON.stringify({turnos:sorted(),config:cfg},null,1)],{type:'application/json'}));
 
@@ -104,16 +108,17 @@ $('imB').onclick=()=>$('imF').click();
 $('imF').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;let list=[];const ext=f.name.split('.').pop().toLowerCase();
   try{
     if(ext==='ics')list=parseICS(await f.text());
-    else if(ext==='json'){const j=JSON.parse(await f.text());list=(Array.isArray(j)?j:j.turnos||[]).map(t=>({nombre:t.nombre,apellido:t.apellido||'',fecha:t.fecha,hora:t.hora,primera:t.primera}))}
-    else{if(!window.XLSX){msg('No se pudo cargar el m\u00f3dulo de Excel.');return}
+    else if(ext==='json'){const j=JSON.parse(await f.text());list=(Array.isArray(j)?j:j.turnos||[]).filter(t=>t&&typeof t==='object').map(t=>({nombre:String(t.nombre||''),apellido:String(t.apellido||''),fecha:String(t.fecha||''),hora:String(t.hora||''),primera:t.primera===true}))}
+    else{try{await loadX()}catch(err){msg('No se pudo cargar el m\u00f3dulo de Excel.');return}
       const wb=ext==='csv'?XLSX.read(await f.text(),{type:'string'}):XLSX.read(await f.arrayBuffer(),{type:'array'});
       list=parseRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}))}
   }catch(err){msg('No pude leer ese archivo.');return}
-  list=list.filter(t=>t.fecha&&t.hora&&t.nombre);
+  list=list.filter(t=>/^\d{4}-\d{2}-\d{2}$/.test(t.fecha)&&/^\d{1,2}:\d{2}$/.test(t.hora)&&mins(t.hora)<1440&&t.nombre&&String(t.nombre).length<=60&&String(t.apellido||'').length<=60&&!isNaN(fmt(t.fecha))).slice(0,20000);
   const dup=new Set(turnos.map(t=>t.fecha+t.hora+nz(t.nombre+t.apellido))),nuevos=list.filter(t=>!dup.has(t.fecha+t.hora+nz(t.nombre+t.apellido)));
   if(!nuevos.length){msg('No encontr\u00e9 sesiones nuevas para importar.');return}
   ask('Se encontraron '+nuevos.length+' sesiones nuevas ('+(list.length-nuevos.length)+' repetidas se omiten). \u00bfImportarlas?',()=>{
-    nuevos.forEach(t=>_sT({...t,id:gid(),by:me?me.id:''}));logH('Import\u00f3 '+nuevos.length+' sesiones desde '+f.name);render();msg('Listo: '+nuevos.length+' sesiones importadas.')},'Importar')};
+    const L=nuevos.map(t=>({...t,nombre:capName(t.nombre),apellido:capName(t.apellido),id:gid(),by:me?me.id:''}));L.forEach(t=>{if(!turnos.includes(t))turnos.push(t)});tv++;
+    (db&&db.setMany?db.setMany(L.map(t=>['turnos/'+t.id,{...t}])):Promise.resolve()).then(()=>{logH('Import\u00f3 '+L.length+' sesiones desde '+String(f.name).slice(0,60));msg('Listo: '+L.length+' sesiones importadas.')}).catch(()=>msg('No se pudo guardar todo. Revis\u00e1 tu conexi\u00f3n y volv\u00e9 a importar.'));render()},'Importar')};
 
 /* cuenta */
 $('cOut').onclick=()=>window.logout&&window.logout();
@@ -123,12 +128,14 @@ $('cDel').onclick=()=>ask(window.AGENDA_OWNER?'Sos el due\u00f1o: se borra tu cu
 const TPL='Hola {nombre}, te recuerdo tu sesi\u00f3n del {fecha} a las {hora}. \u00a1Te espero!',TPLOK='Hola {nombre}, tu sesi\u00f3n del {fecha} a las {hora} qued\u00f3 confirmada. \u00a1Te espero!';
 let rm={push:[60],wa:[1440],tpl:TPL,tplOk:TPLOK},rmNote='';
 const waNum=p=>{let d=String(p||'').replace(/\D/g,'').replace(/^00/,'');if(d.startsWith('54')){if(!d.startsWith('549'))d='549'+d.slice(2)}else d='549'+d.replace(/^0/,'');return d.length>=12?d:''};
-const waLink=(n,t)=>'https://wa.me/'+n+'?text='+encodeURIComponent(t);
-const waApp=(n,t)=>'whatsapp://send?'+(n?'phone='+n+'&':'')+'text='+encodeURIComponent(t);
-const waBiz=(n,t)=>'intent://send/?'+(n?'phone='+n+'&':'')+'text='+encodeURIComponent(t)+'#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url='+encodeURIComponent(n?waLink(n,t):'https://wa.me/?text='+encodeURIComponent(t))+';end';
+const dg=n=>/^\d{10,15}$/.test(String(n||''))?String(n):'';
+const waLink=(n,t)=>'https://wa.me/'+dg(n)+'?text='+encodeURIComponent(t);
+const waApp=(n,t)=>(n=dg(n),'whatsapp://send?'+(n?'phone='+n+'&':'')+'text='+encodeURIComponent(t));
+const waBiz=(n,t)=>(n=dg(n),'intent://send/?'+(n?'phone='+n+'&':'')+'text='+encodeURIComponent(t)+'#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url='+encodeURIComponent(n?waLink(n,t):'https://wa.me/?text='+encodeURIComponent(t))+';end');
 const waOpen=u=>{const a=document.createElement('a');a.href=u;a.rel='noopener';document.body.appendChild(a);a.click();a.remove()};
 const openWA=(n,t)=>{try{if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent))waOpen(waApp(n,t));else{const u=n?waLink(n,t):'https://wa.me/?text='+encodeURIComponent(t);if(!window.open(u,'_blank'))location.href=u}}catch(err){alert('No se pudo abrir WhatsApp: '+err.message)}};
 function showWA(o){
+  o={n:/^\d{10,15}$/.test(String(o.n||''))?String(o.n):'',nm:String(o.nm||'').slice(0,80),t:String(o.t||'').slice(0,1000),ok:o.ok,auto:o.auto};
   const d=document.createElement('div'),B='width:100%;height:52px;border-radius:26px;border:0;font:inherit;font-weight:700;cursor:pointer;margin-bottom:10px',android=/Android/i.test(navigator.userAgent);
   d.style.cssText='position:fixed;inset:0;z-index:200;background:var(--bg);color:var(--fg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto';
   d.innerHTML=`<div style="width:100%;max-width:380px"><h1 style="margin:0 0 6px;font-size:24px">${o.ok?'Avisale a '+esc(o.nm):o.nm?'Recordale a '+esc(o.nm):'Enviar mensaje'}</h1><p style="color:var(--mute);margin:0 0 14px">Toc\u00e1 el bot\u00f3n: se abre WhatsApp con el mensaje escrito y solo ten\u00e9s que enviar.</p><div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:16px;white-space:pre-wrap">${esc(o.t||'')}</div><button id="wA" style="${B};background:var(--y);color:var(--yfg)">Abrir WhatsApp</button>${android?`<button id="wB" style="${B};background:var(--card);color:var(--fg)">Abrir WhatsApp Business</button>`:''}<button id="wX" style="${B};background:none;color:var(--mute)">Cerrar</button></div>`;
@@ -137,8 +144,8 @@ function showWA(o){
   d.querySelector('#wA').onclick=()=>openWA(o.n,o.t);
   if(android)d.querySelector('#wB').onclick=()=>{location.href=waBiz(o.n,o.t)};
   d.querySelector('#wX').onclick=()=>d.remove()}
-{const q=new URLSearchParams(location.search).get('wa');if(q){let o=null;try{o=JSON.parse(q)}catch(err){}if(o&&o.t){history.replaceState({},'',location.pathname);const go=()=>showWA(o);document.body?go():addEventListener('DOMContentLoaded',go)}}}
-const fill=(s,t)=>(s||TPLOK).replace(/\{nombre\}/g,t.nombre).replace(/\{fecha\}/g,fmt(t.fecha).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})).replace(/\{hora\}/g,t.hora);
+{const q=new URLSearchParams(location.search).get('wa');if(q){let o=null;try{o=JSON.parse(q)}catch(err){}if(o&&typeof o==='object'&&o.t){history.replaceState({},'',location.pathname);const go=()=>showWA(o);document.body?go():addEventListener('DOMContentLoaded',go)}}}
+const fill=(s,t)=>{const f=fmt(t.fecha).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});return(s||TPLOK).replace(/\{nombre\}/g,()=>t.nombre).replace(/\{fecha\}/g,()=>f).replace(/\{hora\}/g,()=>t.hora)};
 window.approveT=t=>{
   t.estado='confirmado';saveT(t);render();if($('sR').style.display!=='none')renderR();
   let msg='',tl='';try{tl=waNum(t.tel||'');msg=fill(rm.tplOk,t)}catch(err){msg='Hola '+t.nombre+', tu sesi\u00f3n qued\u00f3 confirmada.'}
@@ -187,7 +194,7 @@ $('rmBody').onclick=async e=>{
   d.doc('config/remind').onSnapshot(s=>{if(s.exists){const c=s.data();rm={push:Array.isArray(c.push)?c.push:rm.push,wa:Array.isArray(c.wa)?c.wa:[],tpl:c.tpl||TPL,tplOk:c.tplOk||TPLOK}}else if(typeof canW==='undefined'||canW)saveRm();if($('sRm').style.display!=='none'&&!document.activeElement.matches('textarea,input,select'))renderRm()});
   $('accMail').textContent=window.USER_EMAIL||'';
   d.doc('booking/main').onSnapshot(s=>{if(s.exists)bk={...bk,...s.data()};renderR()});
-  d.doc('config/otro').onSnapshot(s=>{if(s.exists&&s.data().color){OTRO=s.data().color;render();renderM()}});
+  d.doc('config/otro').onSnapshot(s=>{if(s.exists&&s.data().color){OTRO=sc(s.data().color);render();renderM()}});
   d.collection('hist').onSnapshot(s=>{hist=s.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>b.ts-a.ts).slice(0,150);renderHi()});
   d.collection('fichas').onSnapshot(s=>{fich={};s.docs.forEach(x=>fich[x.id]=x.data());if($('sF').style.display!=='none')renderF()})}catch(err){console.error(err)}})();
 })();
