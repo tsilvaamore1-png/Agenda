@@ -15,7 +15,7 @@ addScreen('R',`<div class="rv"><div class="r"><label ${LW}>Aprobar cada reserva 
 addScreen('Rm','<div id="rmBody"></div>');
 addScreen('F','<div id="fBody"></div>');
 addScreen('Hi','<div id="hiBody"></div>');
-addScreen('IO',`<h2>Exportar</h2><button class="menub" id="exX">Excel (.xlsx)<span>\u2193</span></button><button class="menub" id="exI">Calendario (.ics)<span>\u2193</span></button><button class="menub" id="exJ">Copia de la agenda (.json)<span>\u2193</span></button><button class="menub" id="exN">Notas privadas de este celular (.json)<span>\u2193</span></button><button class="menub" id="exN">Notas privadas (.json)<span>\u2193</span></button><h2>Importar</h2><button class="menub" id="imN">Notas privadas (.json)<span>\u2191</span></button><input type="file" id="imNF" accept=".json" hidden><button class="menub" id="imB">Elegir archivo<span>\u2191</span></button><input type="file" id="imF" accept=".xlsx,.xls,.csv,.ics,.json" hidden><button class="menub" id="imN">Notas privadas (.json)<span>\u2191</span></button><input type="file" id="imNF" accept=".json" hidden><div class="heard" id="imM" style="white-space:normal;margin-top:8px">Excel o CSV con columnas Nombre, Apellido, Fecha, Hora y Primera sesi\u00f3n (S\u00ed o vac\u00edo); archivo .ics de Google Calendar u otro calendario; o una copia .json de esta app.</div>`);
+addScreen('IO',`<h2>Exportar</h2><button class="menub" id="exX">Excel (.xlsx)<span>\u2193</span></button><button class="menub" id="exI">Calendario (.ics)<span>\u2193</span></button><button class="menub" id="exJ">Copia de la agenda (.json)<span>\u2193</span></button><button class="menub" id="exN">Notas privadas de este celular (.json)<span>\u2193</span></button><h2>Importar</h2><button class="menub" id="imB">Elegir archivo<span>\u2191</span></button><input type="file" id="imF" accept=".xlsx,.xls,.csv,.ics,.json" hidden><button class="menub" id="imN">Notas privadas desde archivo (.json)<span>\u2191</span></button><input type="file" id="imNF" accept=".json" hidden><div class="heard" id="imM" style="white-space:normal;margin-top:8px">Excel o CSV con columnas Nombre, Apellido, Fecha, Hora y Primera sesi\u00f3n (S\u00ed o vac\u00edo); archivo .ics de Google Calendar u otro calendario; o una copia .json de esta app.</div>`);
 addScreen('C','<div class="rv"><div class="r"><label ${LW}>Email</label><span id="cMail" style="word-break:break-all;text-align:right"></span></div><div class="r"><label ${LW}>Tipo de cuenta</label><span id="cRol"></span></div></div><div class="heard" style="white-space:normal;margin:8px 0 12px">Por seguridad la contrase\u00f1a no se puede ver: se guarda cifrada y nadie la conoce, ni siquiera yo. Si no te acordás, pod\u00e9s crear una nueva.</div><button class="menub" id="cPw">Cambiar contrase\u00f1a<span>\u203a</span></button><button class="menub" id="cOut">Cerrar sesi\u00f3n<span>\u203a</span></button><button class="menub" id="cDel" style="color:#ff6b6b">Eliminar mi cuenta<span>\u203a</span></button>');
 {const mb=[...$('sMenu').children].find(b=>/^Cuenta/.test(b.textContent));if(mb)mb.innerHTML='Cuenta<small id="accMail" style="color:var(--mute);margin:0 auto 0 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%"></small><span>\u203a</span>'}
 window.renderC=()=>{$('cMail').textContent=window.USER_EMAIL||'';$('cRol').textContent=window.AGENDA_OWNER?'Due\u00f1o de la agenda':'Miembro'};
@@ -91,12 +91,6 @@ $('exI').onclick=()=>{const st=new Date().toISOString().replace(/[-:]|\.\d{3}/g,
   L.push('END:VCALENDAR');dl('agenda.ics',new Blob([L.join('\r\n')],{type:'text/calendar'}))};
 $('exJ').onclick=()=>dl('agenda.json',new Blob([JSON.stringify({turnos:sorted(),config:cfg},null,1)],{type:'application/json'}));
 
-$('exN').onclick=()=>{const o={};try{Object.keys(localStorage).forEach(k=>{if(k.startsWith('nt:')&&localStorage.getItem(k))o[k]=localStorage.getItem(k)})}catch(err){}
-  if(!Object.keys(o).length){msg('No hay notas privadas en este dispositivo.');return}dl('notas-privadas.json',new Blob([JSON.stringify(o)],{type:'application/json'}));msg('Listo: guard\u00e1 ese archivo en un lugar seguro. Contiene datos sensibles.')};
-$('imN').onclick=()=>$('imNF').click();
-$('imNF').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;let n=0;
-  try{const o=JSON.parse(await f.text());Object.keys(o).forEach(k=>{const v=o[k];if(!k.startsWith('nt:')||k.length>200||typeof v!=='string'||v.length>200000)return;const p=localStorage.getItem(k)||'';if(!p)localStorage.setItem(k,v);else if(!p.includes(v))localStorage.setItem(k,p+'\n'+v);n++});
-    msg('Listo: '+n+' notas importadas.');render()}catch(err){msg('No pude leer ese archivo.')}};
 /* importar */
 const toT=(name,d)=>{const w=name.replace(/^(sesi\u00f3n|sesion|turno|cita)\s*[:\-\u2013]?\s*(con|de)?\s*/i,'').trim().split(/\s+/).filter(Boolean);const sp=splitName(w);return{nombre:sp[0]||'Sin nombre',apellido:sp[1],fecha:key(d),hora:z(d.getHours())+':'+z(d.getMinutes())}};
 function parseICS(txt){const L=txt.replace(/\r?\n[ \t]/g,'').split(/\r?\n/),out=[];let ev=null;
@@ -132,7 +126,7 @@ $('exN').onclick=()=>{const o={};try{for(let i=0;i<localStorage.length;i++){cons
   dl('notas-privadas.json',new Blob([JSON.stringify({v:1,notas:o})],{type:'application/json'}));msg(n+' notas exportadas. Es un archivo sin cifrar con datos sensibles: guardalo en un lugar seguro y borralo cuando termines de usarlo.')};
 $('imN').onclick=()=>$('imNF').click();
 $('imNF').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
-  try{const j=JSON.parse(await f.text()),o=j&&j.notas;if(!o||typeof o!=='object')throw 0;let n=0;
+  try{const j=JSON.parse(await f.text()),o=j&&(j.notas&&typeof j.notas==='object'?j.notas:j);if(!o||typeof o!=='object')throw 0;let n=0;
     for(const k of Object.keys(o)){const v=o[k];if(!/^nt:[\w:.\-]{1,200}$/.test(k)||typeof v!=='string'||v.length>200000)continue;const p=localStorage.getItem(k);
       if(!p)localStorage.setItem(k,v);else if(p!==v&&!p.includes(v))localStorage.setItem(k,p+'\n'+v);n++}
     msg(n+' notas importadas.');render()}catch(err){msg('No pude leer ese archivo de notas.')}};
